@@ -1,0 +1,15 @@
+@desc(run mog, this is kinda circular)
+run:
+	v run .
+
+@desc(build mog into an executable)
+build:
+	v .
+
+@desc(check if code can be compiled successfully)
+check:
+	v -check .
+
+@desc(format mog code to v standards)
+fmt:
+	v fmt . -w

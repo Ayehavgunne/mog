@@ -1,0 +1,30 @@
+# import (
+#	path/to/other/dir/with/.mog/file # will be namespaced with the name of the directory
+#	path/to/another/dir as my_alias # you can alias directory names in case of conflicts
+#)
+
+py_version = 3.13
+py = python{py_version} # a comment
+h = hello world {py_version}
+# another comment
+
+@dep(
+	build
+	start
+	# my_alias.some_task_name # refering to a task from an import
+)
+@desc(run my project)
+run:
+	echo ${EDITOR}
+	{py} my_script.py
+
+@desc(build my project)
+build:
+	{py} build_script.py
+
+@desc(clean up some stuff)
+clean:
+	rm .file_or_whatev
+
+start:
+	echo '{h}'
