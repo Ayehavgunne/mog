@@ -4,6 +4,9 @@ import os
 
 const open_replacement = '{'
 const close_replacement = '}'
+const open_eval = '['
+const close_eval = ']'
+const escape = '\\'
 
 pub struct Command {
 pub mut:
@@ -38,17 +41,36 @@ fn (m Mog) get_deps(deps []string) []string {
 	return new_deps
 }
 
+fn (m Mog) interpolate_command(command Command) string {
+	mut new_body := []string{}
+
+	for line in command.body {
+		mut new_line := m.interpolate(line)
+		new_body << new_line.trim_space()
+	}
+	return new_body.join(' && ')
+}
+
 fn (m Mog) interpolate(value string) string {
 	mut replacement := ''
 	mut in_replacement := false
+	mut in_eval := false
+	mut is_escape := false
 	mut new_value := ''
 	mut saw_dollarsign := false
 
 	for character in value {
+		if character.ascii_str() == escape && !is_escape {
+			is_escape = true
+			continue
+		}
+		if is_escape && character.ascii_str() == escape {
+			is_escape = false
+		}
 		if character.ascii_str() == '$' {
 			saw_dollarsign = true
 		}
-		if character.ascii_str() == open_replacement && !saw_dollarsign {
+		if character.ascii_str() == open_replacement && !saw_dollarsign && !is_escape {
 			in_replacement = true
 			continue
 		}
@@ -59,23 +81,27 @@ fn (m Mog) interpolate(value string) string {
 			saw_dollarsign = false
 			continue
 		}
-		if in_replacement {
+		if character.ascii_str() == open_eval && !in_eval && !is_escape {
+			in_eval = true
+			continue
+		}
+		if character.ascii_str() == close_eval && in_eval {
+			in_eval = false
+			new_value += os.execute(replacement).output
+			replacement = ''
+			saw_dollarsign = false
+			continue
+		}
+		if in_replacement || in_eval {
 			replacement += character.ascii_str()
 		} else {
 			new_value += character.ascii_str()
 		}
+		if is_escape && character.ascii_str() != escape {
+			is_escape = true
+		}
 	}
 	return new_value
-}
-
-fn (m Mog) interpolate_command(command Command) string {
-	mut new_body := []string{}
-
-	for line in command.body {
-		mut new_line := m.interpolate(line)
-		new_body << new_line
-	}
-	return new_body.join(' && ')
 }
 
 pub fn (mut m Mog) execute(command Command, args []string) os.Result {
@@ -93,5 +119,7 @@ pub fn (mut m Mog) execute(command Command, args []string) os.Result {
 		new_body += ' '
 		new_body += args.join(' ')
 	}
+	debug('${command}')
+	debug(new_body)
 	return os.execute(new_body)
 }

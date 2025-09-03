@@ -2,7 +2,7 @@ module main
 
 import os
 import v.vmod
-import mog { Mog, parse }
+import mog { Mog, debug, parse }
 
 fn main() {
 	mut args := arguments()[1..]
@@ -19,6 +19,11 @@ fn main() {
 		args.pop_left()
 	}
 
+	if '-V' in dash_args || '--version' in dash_args {
+		print_version()
+		exit(0)
+	}
+
 	mog_file := os.read_file('.mog') or {
 		println('Failed to read file.')
 		exit(1)
@@ -28,11 +33,7 @@ fn main() {
 		println('Failed to parse .mog file. ${err}')
 		exit(1)
 	}
-
-	if '-V' in dash_args || '--version' in dash_args {
-		print_version()
-		exit(0)
-	}
+	debug('${m}')
 
 	if '-l' in dash_args || '--list' in dash_args {
 		print_commands(m)
@@ -62,14 +63,15 @@ fn print_version() {
 	println('${vm.name} ${vm.version}')
 }
 
-fn print_commands(m Mog) {
+fn print_commands(m ?Mog) {
+	definite_m := m or { return }
 	println('Commands available from the current .mog file:')
-	mut labels := m.commands.keys()
+	mut labels := definite_m.commands.keys()
 	for mut label in labels {
 		label = '  ${label}:'
 	}
 	len := longest(labels)
-	for name, command in m.commands {
+	for name, command in definite_m.commands {
 		just_name := ljust('  ${name}:', len, ' ')
 		if command.desc.len > 0 {
 			println('${just_name}\t${command.desc}')
@@ -79,7 +81,7 @@ fn print_commands(m Mog) {
 	}
 }
 
-fn print_help(m Mog) {
+fn print_help(m ?Mog) {
 	println('Mog is a tool for running commands from a .mog file in the current directory\n')
 	println('Usage:')
 	println('  mog [options] [command] [arguments]\n')

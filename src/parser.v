@@ -89,15 +89,16 @@ fn (mut p Parser) process_next_token() ! {
 			return error('Command body not found')
 		}
 		for p.current_token.token_type == .command_body {
-			p.current_command.body << p.current_token.value
 			if p.eof {
-				return
+				break
 			}
+			p.current_command.body << p.current_token.value
 			p.move()
 			if p.current_token.token_type == .new_line {
 				p.move()
 			}
 		}
+		debug('${p.current_command}')
 		p.commands[command_name] = p.current_command
 		p.current_command = Command{}
 	}

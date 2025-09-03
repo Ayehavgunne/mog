@@ -3,10 +3,14 @@
 #	path/to/another/dir as my_alias # you can alias directory names in case of conflicts
 #)
 
+# a comment
+
 py_version = 3.13
-py = python{py_version} # a comment
-h = hello world {py_version}
-# another comment
+py = python{py_version}
+h=hello world
+v_path = [which v] # calls shell command and stores it into variable
+bracket = \[ # escape opening brackets like [ and {
+# No need to escape ( since it isn't used in an interpolation context
 
 @dep(
 	build
@@ -28,3 +32,11 @@ clean:
 
 start:
 	echo '{h}'
+	{v_path} run .
+
+@desc(for testing)
+test:
+	echo [which v]
+	echo hello
+	echo ${EDITOR}
+	hogwash || echo no hogwash

@@ -4,12 +4,19 @@ run:
 
 @desc(build mog into an executable)
 build:
-	v .
+	v . && echo built
 
 @desc(check if code can be compiled successfully)
 check:
-	v -check .
+	v -check . && echo code is good
 
 @desc(format mog code to v standards)
 fmt:
 	v fmt . -w
+
+@desc(for testing)
+test:
+	echo [which v]
+	echo hello
+	echo ${EDITOR}
+	hogwash || echo no hogwash

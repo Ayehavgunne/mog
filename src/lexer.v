@@ -10,7 +10,7 @@ const block_end = ')'
 const indent = '\t'
 const debug_mode = false
 
-fn debug(s string) {
+pub fn debug(s string) {
 	if debug_mode {
 		println('DEBUG: ${s}')
 	}
@@ -138,7 +138,7 @@ fn (mut l Lexer) eat_decorator() Token {
 }
 
 fn (mut l Lexer) eat_word() !Token {
-	l.add_to_word([' ', command_delimeter])
+	l.add_to_word([' ', command_delimeter, var_delimiter])
 	if l.word == mog_import {
 		t := l.make_token(.keyword, l.reset_word())
 		if l.word == mog_import {
@@ -158,7 +158,8 @@ fn (mut l Lexer) eat_word() !Token {
 		l.eat_newline() or { return err }
 		return t
 	}
-	if l.peek(PeekOptions{ skip_whitespace: true }) == '=' {
+	if l.current_char == var_delimiter
+		|| l.peek(PeekOptions{ skip_whitespace: true }) == var_delimiter {
 		return l.eat_var()
 	}
 	return error('Unkown syntax error at line ${l.line} : col ${l.column}')
@@ -169,11 +170,8 @@ fn (mut l Lexer) eat_command() !Token {
 		l.end_of_file()
 		return l.make_token(.eof, 'EOF')
 	}
-	debug('char(${l.current_char})')
 	if l.current_char == '\n' {
-		debug('2 ${l.peek()}')
 		if l.peek() == '\n' || l.peek() != indent {
-			debug('1')
 			l.context = .root
 		}
 		return l.eat_newline()
@@ -216,7 +214,6 @@ fn (mut l Lexer) eat_value() Token {
 	if l.context == .var_declaration {
 		l.context = .root
 		l.word = l.word.trim_space()
-		// l.next_char()
 	}
 	if l.current_char == block_end {
 		l.context = .root
