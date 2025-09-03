@@ -12,6 +12,10 @@ v_path = [which v] # calls shell command and stores it into variable
 bracket = \[ # escape opening brackets like [ and {
 # No need to escape ( since it isn't used in an interpolation context
 
+# a task named 'default' will be called if mog is called without a specific task name
+@dep(test)
+default:
+
 @dep(
 	build
 	start

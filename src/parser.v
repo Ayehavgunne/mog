@@ -13,8 +13,8 @@ struct Parser {
 mut:
 	pos             int
 	vars            map[string]string
-	commands        map[string]Command
-	current_command Command
+	tasks           map[string]Task
+	current_command Task
 	current_token   Token
 	context         ParserContext
 	eof             bool
@@ -30,8 +30,8 @@ pub fn parse(file string) !Mog {
 		p.process_next_token()!
 	}
 	return Mog{
-		vars:     p.vars
-		commands: p.commands
+		vars:  p.vars
+		tasks: p.tasks
 	}
 }
 
@@ -85,9 +85,6 @@ fn (mut p Parser) process_next_token() ! {
 	if p.current_token.token_type == .command_name {
 		command_name := p.current_token.value
 		p.move()
-		if p.current_token.token_type != .command_body {
-			return error('Command body not found')
-		}
 		for p.current_token.token_type == .command_body {
 			if p.eof {
 				break
@@ -99,8 +96,8 @@ fn (mut p Parser) process_next_token() ! {
 			}
 		}
 		debug('${p.current_command}')
-		p.commands[command_name] = p.current_command
-		p.current_command = Command{}
+		p.tasks[command_name] = p.current_command
+		p.current_command = Task{}
 	}
 
 	p.move()

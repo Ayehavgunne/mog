@@ -2,6 +2,10 @@
 run:
 	v run .
 
+@desc(run mog with debug output)
+run_trace:
+	v -d trace_logs run .
+
 @desc(build mog into an executable)
 build:
 	v . && echo built
@@ -20,3 +24,9 @@ test:
 	echo hello
 	echo ${EDITOR}
 	hogwash || echo no hogwash
+
+test2:
+	echo testing
+
+@dep(test2)
+default:

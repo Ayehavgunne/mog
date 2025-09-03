@@ -8,12 +8,10 @@ const var_delimiter = '='
 const block_start = '('
 const block_end = ')'
 const indent = '\t'
-const debug_mode = false
 
+@[if trace_logs ?]
 pub fn debug(s string) {
-	if debug_mode {
-		println('DEBUG: ${s}')
-	}
+	println('DEBUG: ${s}')
 }
 
 enum TokenType {
