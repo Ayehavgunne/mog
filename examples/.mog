@@ -1,7 +1,7 @@
-# import (
-#	path/to/other/dir/with/.mog/file # will be namespaced with the name of the directory
-#	path/to/another/dir as my_alias # you can alias directory names in case of conflicts
-#)
+import (
+	path/to/other/dir/with/.mog/file # will be namespaced with the name of the directory
+	path/to/another/dir as my_alias # you can alias directory names in case of conflicts
+)
 
 # a comment
 
@@ -12,18 +12,14 @@ v_path = [which v] # calls shell command and stores it into variable
 bracket = \[ # escape opening brackets like [ and {
 # No need to escape ( since it isn't used in an interpolation context
 
-# a task named 'default' will be called if mog is called without a specific task name
-@dep(test)
-default:
-
 @dep(
 	build
 	start
-	# my_alias.some_task_name # refering to a task from an import
+	my_alias.some_task_name # refering to a task from an import
 )
 @desc(run my project)
 run:
-	echo ${EDITOR}
+	echo ${EDITOR} # using a bash env var
 	{py} my_script.py
 
 @desc(build my project)
@@ -40,7 +36,10 @@ start:
 
 @desc(for testing)
 test:
-	echo [which v]
 	echo hello
-	echo ${EDITOR}
+	echo {my_alias.some_var} # refering to a variable from an import
 	hogwash || echo no hogwash
+
+# a task named 'default' will be called if mog is called without a specific task name
+@dep(test)
+default:

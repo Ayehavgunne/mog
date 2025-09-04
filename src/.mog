@@ -1,2 +1,4 @@
+val = yes
+
 test:
 	echo in src test

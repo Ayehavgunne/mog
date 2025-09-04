@@ -12,6 +12,7 @@ struct Parser {
 	tokens []Token
 mut:
 	pos             int
+	imports         map[string]string
 	vars            map[string]string
 	tasks           map[string]Task
 	current_command Task
@@ -30,8 +31,9 @@ pub fn parse(file string) !Mog {
 		p.process_next_token()!
 	}
 	return Mog{
-		vars:  p.vars
-		tasks: p.tasks
+		vars:    p.vars
+		tasks:   p.tasks
+		imports: p.imports
 	}
 }
 
@@ -95,9 +97,44 @@ fn (mut p Parser) process_next_token() ! {
 				p.move()
 			}
 		}
-		debug('${p.current_command}')
 		p.tasks[command_name] = p.current_command
 		p.current_command = Task{}
+	}
+
+	if p.current_token.token_type == .keyword {
+		if p.current_token.value == mog_import {
+			err_msg := 'Incorrect import syntax'
+			p.move()
+			for p.current_token.token_type != .end_block {
+				mut count_down := 3
+				mut path := ''
+				mut alias := ''
+				for p.current_token.token_type != .new_line {
+					if count_down < 1 {
+						return error(err_msg)
+					}
+					if count_down == 3 {
+						path = p.current_token.value
+						alias = path.split('/').last()
+					}
+					if count_down == 2 {
+						if p.current_token.value != 'as' {
+							return error(err_msg)
+						}
+					}
+					if count_down == 1 {
+						alias = p.current_token.value
+					}
+					p.move()
+					count_down -= 1
+				}
+				if alias.contains(' ') {
+					return error('Import name cannot contain a space')
+				}
+				p.imports[alias] = path
+				p.move()
+			}
+		}
 	}
 
 	p.move()

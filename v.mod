@@ -1,7 +1,7 @@
 Module {
 	name: 'mog'
 	description: 'A simple task runner'
-	version: '0.2.0'
+	version: '1.0.0'
 	license: 'MIT'
 	dependencies: []
 }

@@ -13,10 +13,9 @@ Define your tasks in a `.mog` file and run them with the `mog` command. Indentat
 - task dependencies
 - task descriptions
 - single line comments with #
-- SOON: importing other `.mog` files
+- importing other `.mog` files and using the tasks or variables with dot syntax
 
 ## Example
-See this projects .mog file
+See this projects various .mog files
 
 ## TODO
-- add imports
