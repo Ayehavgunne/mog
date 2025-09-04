@@ -21,12 +21,22 @@ fmt:
 @desc(for testing)
 test:
 	echo [which v]
-	echo hello
+	sleep 2
+	echo {$"*"}
+	echo Enter your name
+	read name
+	echo hello ${name}
 	echo ${EDITOR}
 	hogwash || echo no hogwash
 
 test2:
 	echo testing
+
+test3:
+	echo {$#}
+	for arg in {$"@"}; do
+		echo "- $arg"
+	done
 
 @dep(test2)
 default:

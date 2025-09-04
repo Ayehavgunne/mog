@@ -254,7 +254,7 @@ fn (mut l Lexer) skip_comment() {
 }
 
 fn (mut l Lexer) skip_whitespace() {
-	for l.current_char == ' ' || l.current_char == '\t' {
+	for l.current_char in [' ', '\t'] {
 		l.next_char()
 		l.reset_word()
 	}
