@@ -41,6 +41,9 @@ test:
 
 test2:
 	echo testing
+	pwd
+	cd ..
+	pwd
 
 @dep(up.test)
 test3:
