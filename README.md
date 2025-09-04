@@ -31,7 +31,8 @@ import (
 
 # variable declarations
 py_version = 3.13
-py = python{py_version}
+py = python{py_version} # variable string interpolation
+v_path = [which v] # storing a shell eval into a variable
 
 # the default task which is executed when calling a bare 'mog' with no arguments
 @dep(run)
@@ -58,6 +59,7 @@ test:
 	echo {$"@"} # they behave exatly the same as bash's equivalents
 	echo {$*}
 	echo {$"*"}
+	echo {$#}
 
 ...
 ```
