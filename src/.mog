@@ -1,10 +1,12 @@
 val = yes
+uname = [uname -s]
 
 @dep(test2)
 default:
 
 test:
 	echo in src test
+	echo {uname}
 	pwd
 
 test2:

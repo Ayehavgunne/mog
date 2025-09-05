@@ -43,14 +43,14 @@ fn get_deps(m Mog, deps []string, options InterpolateOptions) []string {
 		sub_deps := get_deps(this_mog, dep_command.deps)
 		new_deps << sub_deps
 		new_deps << 'cd ${this_mog.path}'
-		new_deps << m.interpolate_task(dep_command, options)
+		new_deps << interpolate_task(m, mut dep_command, options)
 		new_deps << 'cd - > /dev/null 2>&1'
 	}
 
 	return new_deps
 }
 
-fn (m Mog) interpolate_task(task Task, options InterpolateOptions) string {
+fn interpolate_task(m Mog, mut task Task, options InterpolateOptions) string {
 	mut new_body := []string{}
 
 	for line in task.body {
@@ -60,6 +60,7 @@ fn (m Mog) interpolate_task(task Task, options InterpolateOptions) string {
 		})
 		new_body << new_line.trim_space()
 	}
+	task.body = new_body
 	return new_body.join('\n')
 }
 
@@ -135,7 +136,7 @@ fn (m Mog) interpolate(options InterpolateOptions) string {
 		}
 		if options.is_var && character.ascii_str() == close_eval && in_eval {
 			in_eval = false
-			new_value += os.execute(replacement).output
+			new_value += os.execute(replacement).output.trim_space()
 			replacement = ''
 			saw_dollarsign = false
 			continue
@@ -152,17 +153,9 @@ fn (m Mog) interpolate(options InterpolateOptions) string {
 	return new_value
 }
 
-pub fn (mut m Mog) execute(task Task, args []string) {
-	mut new_vars := map[string]string{}
-	for key, var in m.vars {
-		new_vars[key] = m.interpolate(InterpolateOptions{
-			value:  var
-			is_var: true
-		})
-	}
-	m.vars = new_vars.move()
+pub fn (mut m Mog) execute(mut task Task, args []string) {
 	deps := get_deps(m, task.deps)
-	mut new_body := m.interpolate_task(task, InterpolateOptions{ args: args })
+	mut new_body := interpolate_task(m, mut task, InterpolateOptions{ args: args })
 	if deps.len > 0 {
 		if new_body.len > 0 {
 			new_body = '${deps.join('\n')}\n${new_body}'

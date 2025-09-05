@@ -64,8 +64,8 @@ fn main() {
 		eprint("No task named '${task_name}' found")
 		exit(1)
 	}
-	task := m.tasks[task_name]
-	m.execute(task, args)
+	mut task := m.tasks[task_name]
+	m.execute(mut task, args)
 }
 
 fn print_version() {

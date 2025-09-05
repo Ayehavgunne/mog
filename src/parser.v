@@ -34,11 +34,22 @@ pub fn parse(file string) !Mog {
 	for !p.eof {
 		p.process_next_token()!
 	}
-	m := Mog{
+	mut m := Mog{
 		vars:    p.vars
 		tasks:   p.tasks
 		path:    os.getwd()
 		imports: do_import(p.import_paths)
+	}
+	mut new_vars := map[string]string{}
+	for key, var in m.vars {
+		new_vars[key] = m.interpolate(InterpolateOptions{
+			value:  var
+			is_var: true
+		})
+	}
+	m.vars = new_vars.move()
+	for _, mut task in m.tasks {
+		interpolate_task(m, mut task)
 	}
 	os.chdir(original_dir) or { debug('failed to ge back to original dir') }
 	return m
