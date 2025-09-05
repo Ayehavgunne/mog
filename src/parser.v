@@ -1,5 +1,9 @@
 module mog
 
+import os
+
+const original_dir = os.getwd()
+
 enum ParserContext {
 	root
 	command_block
@@ -12,7 +16,7 @@ struct Parser {
 	tokens []Token
 mut:
 	pos             int
-	imports         map[string]string
+	import_paths    map[string]string
 	vars            map[string]string
 	tasks           map[string]Task
 	current_command Task
@@ -30,11 +34,32 @@ pub fn parse(file string) !Mog {
 	for !p.eof {
 		p.process_next_token()!
 	}
-	return Mog{
+	m := Mog{
 		vars:    p.vars
 		tasks:   p.tasks
-		imports: p.imports
+		path:    os.getwd()
+		imports: do_import(p.import_paths)
 	}
+	os.chdir(original_dir) or { debug('failed to ge back to original dir') }
+	return m
+}
+
+fn do_import(import_paths map[string]string) map[string]Mog {
+	mut imported_mogs := map[string]Mog{}
+	if import_paths.len > 0 {
+		for alias, path in import_paths {
+			os.chdir(os.abs_path(os.getwd() + '/' + path)) or { debug('Failed to change cwd') }
+			contents := os.read_file('.mog') or {
+				println('Failed to read import: ${os.getwd()}/.mog')
+				exit(1)
+			}
+			imported_mogs[alias] = parse(contents) or {
+				println('Failed to parse import: ${os.getwd()}/.mog  ${err}')
+				exit(1)
+			}
+		}
+	}
+	return imported_mogs
 }
 
 fn (mut p Parser) move() {
@@ -99,6 +124,9 @@ fn (mut p Parser) process_next_token() ! {
 		}
 		p.tasks[command_name] = p.current_command
 		p.current_command = Task{}
+		if p.current_token.token_type == .command_name {
+			return
+		}
 	}
 
 	if p.current_token.token_type == .keyword {
@@ -131,7 +159,7 @@ fn (mut p Parser) process_next_token() ! {
 				if alias.contains(' ') {
 					return error('Import name cannot contain a space')
 				}
-				p.imports[alias] = path
+				p.import_paths[alias] = path
 				p.move()
 			}
 		}

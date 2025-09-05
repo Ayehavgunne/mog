@@ -1,4 +1,11 @@
 val = yes
 
+@dep(test2)
+default:
+
 test:
 	echo in src test
+	pwd
+
+test2:
+	echo in test2

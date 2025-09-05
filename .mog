@@ -1,6 +1,5 @@
 import (
 	src as up
-	examples
 )
 
 v_path = [which v]
@@ -18,7 +17,7 @@ run_trace:
 
 @desc(build mog into an executable)
 build:
-	v -prod -o release/mog . && echo built
+	mkdir -p release && v -prod -o release/mog . && echo built
 
 @desc(check if code can be compiled successfully)
 check:
@@ -52,3 +51,4 @@ test3:
 	for arg in {$"@"}; do
 		echo "- $arg"
 	done
+	pwd

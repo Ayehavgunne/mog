@@ -1,6 +1,6 @@
 import (
-	path/to/other/dir/with/.mog/file # will be namespaced with the name of the directory
-	path/to/another/dir as my_alias # you can alias directory names in case of conflicts
+ 	path/to/other/dir/with/.mog/file # will be namespaced with the name of the directory
+ 	path/to/another/dir as my_alias # you can alias directory names in case of conflicts
 )
 
 # a comment
@@ -11,6 +11,10 @@ h=hello world
 v_path = [which v] # calls shell command and stores it into variable
 bracket = \[ # escape opening brackets like [ and {
 # No need to escape ( since it isn't used in an interpolation context
+
+test2:
+	echo in examples
+	pwd
 
 @dep(
 	build

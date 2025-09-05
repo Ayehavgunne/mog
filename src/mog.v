@@ -19,40 +19,44 @@ pub mut:
 
 pub struct Mog {
 pub:
-	tasks   map[string]Task
-	imports map[string]string
+	tasks map[string]Task
+	path  string
 pub mut:
-	vars map[string]string
+	vars    map[string]string
+	imports map[string]Mog
 }
 
-fn (m Mog) get_deps(deps []string, imported_mogs map[string]Mog, options InterpolateOptions) []string {
+fn get_deps(m Mog, deps []string, options InterpolateOptions) []string {
 	mut new_deps := []string{}
 
 	for dep in deps {
+		mut this_mog := m
 		mut dep_command := Task{}
 		if dep.contains(import_namespace_delimiter)
-			&& dep.split(import_namespace_delimiter).first() in imported_mogs.keys() {
+			&& dep.split(import_namespace_delimiter).first() in m.imports.keys() {
 			dep_parts := dep.split(import_namespace_delimiter)
-			dep_command = imported_mogs[dep_parts.first()].tasks[dep_parts.last()]
+			this_mog = m.imports[dep_parts.first()]
+			dep_command = this_mog.tasks[dep_parts.last()]
 		} else {
 			dep_command = m.tasks[dep]
 		}
-		sub_deps := m.get_deps(dep_command.deps, imported_mogs)
+		sub_deps := get_deps(this_mog, dep_command.deps)
 		new_deps << sub_deps
-		new_deps << m.interpolate_command(dep_command, imported_mogs, options)
+		new_deps << 'cd ${this_mog.path}'
+		new_deps << m.interpolate_task(dep_command, options)
+		new_deps << 'cd - > /dev/null 2>&1'
 	}
 
 	return new_deps
 }
 
-fn (m Mog) interpolate_command(task Task, imported_mogs map[string]Mog, options InterpolateOptions) string {
+fn (m Mog) interpolate_task(task Task, options InterpolateOptions) string {
 	mut new_body := []string{}
 
 	for line in task.body {
 		mut new_line := m.interpolate(InterpolateOptions{
-			value:         line
-			args:          options.args
-			imported_mogs: imported_mogs
+			value: line
+			args:  options.args
 		})
 		new_body << new_line.trim_space()
 	}
@@ -82,10 +86,9 @@ fn replace_mog_var(replacement string, args []string) string {
 
 @[params]
 struct InterpolateOptions {
-	value         string
-	is_var        bool
-	args          []string
-	imported_mogs map[string]Mog
+	value  string
+	is_var bool
+	args   []string
 }
 
 fn (m Mog) interpolate(options InterpolateOptions) string {
@@ -116,9 +119,9 @@ fn (m Mog) interpolate(options InterpolateOptions) string {
 			if replacement.starts_with(mog_var_char) {
 				new_value += replace_mog_var(replacement, options.args)
 			} else if replacement.contains(import_namespace_delimiter)
-				&& replacement.split(import_namespace_delimiter).first() in options.imported_mogs.keys() {
+				&& replacement.split(import_namespace_delimiter).first() in m.imports.keys() {
 				replacement_parts := replacement.split(import_namespace_delimiter)
-				new_value += options.imported_mogs[replacement_parts.first()].vars[replacement_parts.last()]
+				new_value += m.imports[replacement_parts.first()].vars[replacement_parts.last()]
 			} else {
 				new_value += m.vars[replacement]
 			}
@@ -150,30 +153,16 @@ fn (m Mog) interpolate(options InterpolateOptions) string {
 }
 
 pub fn (mut m Mog) execute(task Task, args []string) {
-	mut imported_mogs := map[string]Mog{}
-	if m.imports.len > 0 {
-		for alias, path in m.imports {
-			contents := os.read_file('${path}/.mog') or {
-				println('Failed to read import: ${path}/.mog')
-				exit(1)
-			}
-			imported_mogs[alias] = parse(contents) or {
-				println('Failed to parse import:${path}/.mog  ${err}')
-				exit(1)
-			}
-		}
-	}
 	mut new_vars := map[string]string{}
 	for key, var in m.vars {
 		new_vars[key] = m.interpolate(InterpolateOptions{
-			value:         var
-			is_var:        true
-			imported_mogs: imported_mogs
+			value:  var
+			is_var: true
 		})
 	}
 	m.vars = new_vars.move()
-	deps := m.get_deps(task.deps, imported_mogs)
-	mut new_body := m.interpolate_command(task, imported_mogs, InterpolateOptions{ args: args })
+	deps := get_deps(m, task.deps)
+	mut new_body := m.interpolate_task(task, InterpolateOptions{ args: args })
 	if deps.len > 0 {
 		if new_body.len > 0 {
 			new_body = '${deps.join('\n')}\n${new_body}'

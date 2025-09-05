@@ -171,7 +171,7 @@ fn (mut l Lexer) eat_word() !Token {
 	return error('Unkown syntax error at line ${l.line} : col ${l.column}')
 }
 
-fn (mut l Lexer) eat_command() !Token {
+fn (mut l Lexer) eat_command_body() !Token {
 	if l.current_char == '' || l.peek() == '' {
 		l.end_of_file()
 		return l.make_token(.eof, 'EOF')
@@ -181,6 +181,11 @@ fn (mut l Lexer) eat_command() !Token {
 			l.context = .root
 		}
 		return l.eat_newline()
+	}
+	if l.current_char != indent {
+		debug("not at indent")
+		l.context = .root
+		return error("no indent")
 	}
 	l.skip_whitespace()
 	l.add_to_word(['\n', ''])
@@ -356,7 +361,7 @@ fn (mut l Lexer) get_next_token() ![]Token {
 			l.next_char()
 			return [l.make_token(.end_block, 'END_BLOCK')]
 		}
-		tokens << l.eat_command()!
+		tokens << l.eat_command_body() or { return []Token{} }
 		return tokens
 	}
 
