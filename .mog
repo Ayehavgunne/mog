@@ -4,7 +4,7 @@ import (
 
 v_path = [which v]
 
-@dep(test2)
+@dep(fmt)
 default:
 
 @desc(run mog, this is kinda circular)
@@ -14,6 +14,9 @@ run:
 @desc(run mog with debug output)
 run_trace:
 	v -d trace_logs run .
+
+b:
+	{build}
 
 @desc(build mog into an executable)
 build:
@@ -27,6 +30,30 @@ check:
 fmt:
 	v fmt . -w
 
+commit:
+	git add -A
+	git commit for arg in {$"@"}; do -m "$arg"; done
+	git push
+
+c:
+	{commit}
+
+amend:
+	git add -A
+	if [ {$#} -eq 0 ]; then
+		git commit --amend --no-edit
+	else
+		output=()
+		for arg in {$"@"}; do
+			output+=( "-m $arg" )
+		done
+		git commit --amend "${output[@]}"
+	fi
+	git push -f
+
+a:
+	{amend}
+
 @desc(for testing)
 test:
 	echo {$bold}{v_path}{$normal_intensity}
@@ -37,11 +64,11 @@ test:
 	read name
 	echo {$normal_intensity}hello ${name}
 	echo {$green}${EDITOR}
-	hogwash || echo no hogwash
+	hogwash {$silence_out_err} || echo no hogwash
 
 test2:
-	echo testing
-	echo {v_path}
+	pwd
+	echo test2
 
 @dep(up.test)
 test3:

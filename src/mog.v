@@ -9,6 +9,36 @@ const close_eval = ']'
 const escape = '\\'
 const mog_var_char = '$'
 const import_namespace_delimiter = '.'
+pub const built_in_vars = {
+	'\$clear':            '\ec'
+	'\$normal':           '\e[0m'
+	'\$bold':             '\e[1m'
+	'\$dim':              '\e[2m'
+	'\$italic':           '\e[3m'
+	'\$underline':        '\e[4m'
+	'\$invert':           '\e[7m'
+	'\$strikethrough':    '\e[9m'
+	'\$normal_intensity': '\e[22m'
+	'\$black':            '\e[30m'
+	'\$red':              '\e[31m'
+	'\$green':            '\e[32m'
+	'\$yellow':           '\e[33m'
+	'\$blue':             '\e[34m'
+	'\$magenta':          '\e[35m'
+	'\$cyan':             '\e[36m'
+	'\$white':            '\e[37m'
+	'\$bg_black':         '\e[40m'
+	'\$bg_red':           '\e[41m'
+	'\$bg_green':         '\e[42m'
+	'\$bg_yellow':        '\e[43m'
+	'\$bg_blue':          '\e[44m'
+	'\$bg_magenta':       '\e[45m'
+	'\$bg_cyan':          '\e[46m'
+	'\$bg_white':         '\e[47m'
+	'\$silence_out':      ' > /dev/null '
+	'\$silence_err':      ' 2> /dev/null '
+	'\$silence_out_err':  ' > /dev/null 2>&1 '
+}
 
 pub struct Task {
 pub mut:
@@ -72,92 +102,26 @@ fn replace_mog_var(replacement string, args []string) string {
 			return arg
 		}
 	}
-	if replacement == '$#' {
-		return '${args.len}'
+	match replacement {
+		'$#' {
+			return '${args.len}'
+		}
+		'$@' {
+			return args.join(' ')
+		}
+		'$*' {
+			return args.join(' ')
+		}
+		'$"@"' {
+			return '"${args.join('" "')}"'
+		}
+		'$"*"' {
+			return '"${args.join(' ')}"'
+		}
+		else {}
 	}
-	if replacement in ['$@', '$*'] {
-		return args.join(' ')
-	}
-	if replacement == '$"@"' {
-		return '"${args.join('" "')}"'
-	}
-	if replacement == '$"*"' {
-		return '"${args.join(' ')}"'
-	}
-	if replacement == '\$clear' {
-		return '\ec'
-	}
-	if replacement == '\$normal' {
-		return '\e[0m'
-	}
-	if replacement == '\$bold' {
-		return '\e[1m'
-	}
-	if replacement == '\$dim' {
-		return '\e[2m'
-	}
-	if replacement == '\$italic' {
-		return '\e[3m'
-	}
-	if replacement == '\$underline' {
-		return '\e[4m'
-	}
-	if replacement == '\$invert' {
-		return '\e[7m'
-	}
-	if replacement == '\$strikethrough' {
-		return '\e[9m'
-	}
-	if replacement == '\$normal_intensity' {
-		return '\e[22m'
-	}
-	if replacement == '\$black' {
-		return '\e[30m'
-	}
-	if replacement == '\$red' {
-		return '\e[31m'
-	}
-	if replacement == '\$green' {
-		return '\e[32m'
-	}
-	if replacement == '\$yellow' {
-		return '\e[33m'
-	}
-	if replacement == '\$blue' {
-		return '\e[34m'
-	}
-	if replacement == '\$magenta' {
-		return '\e[35m'
-	}
-	if replacement == '\$cyan' {
-		return '\e[36m'
-	}
-	if replacement == '\$white' {
-		return '\e[37m'
-	}
-	if replacement == '\$bg_black' {
-		return '\e[40m'
-	}
-	if replacement == '\$bg_red' {
-		return '\e[41m'
-	}
-	if replacement == '\$bg_green' {
-		return '\e[42m'
-	}
-	if replacement == '\$bg_yellow' {
-		return '\e[43m'
-	}
-	if replacement == '\$bg_blue' {
-		return '\e[44m'
-	}
-	if replacement == '\$bg_magenta' {
-		return '\e[45m'
-	}
-	if replacement == '\$bg_cyan' {
-		return '\e[46m'
-	}
-	if replacement == '\$bg_white' {
-		return '\e[47m'
+	if replacement in built_in_vars {
+		return built_in_vars[replacement]
 	}
 	return ''
 }
@@ -257,7 +221,7 @@ pub fn (m Mog) get_task(name string) ?Task {
 	return none
 }
 
-pub fn (mut t Task) execute() {
+pub fn (mut t Task) execute(verbose bool) {
 	deps := get_deps(t.mog, t.deps)
 	mut new_body := interpolate_task(t.mog, mut t)
 	if deps.len > 0 {
@@ -269,6 +233,11 @@ pub fn (mut t Task) execute() {
 	}
 	debug('${t}')
 	debug(new_body)
+	if verbose {
+		println('Executing the following commands:\n')
+		println(new_body)
+		println('${built_in_vars['\$normal']}\n---\n')
+	}
 	exit_code := os.system(new_body)
-	println('\nExit Code: ${exit_code}')
+	println('${built_in_vars['\$normal']}\nExit Code: ${exit_code}')
 }

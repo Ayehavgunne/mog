@@ -74,9 +74,9 @@ See this projects various .mog files
 
 ## Help
 
-Just run `mog -h`
+Just run `mog -h` or `mog --help` or `mog help`
 
 
 ## TODO
 
-Nothing ATM!
+- test on Windows?
