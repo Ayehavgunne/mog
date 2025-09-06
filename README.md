@@ -12,10 +12,12 @@ Define your tasks in a `.mog` file and run them with the `mog` command. Indentat
 - interpolation of variables using `{}` (unless the `{` has a `$` in front, in which case it is left alone for the shell to interpret)
 - escape the `[` and `{` characters with `\`
 - additional cli arguments are passed to the task being ran
-- task dependencies
-- task descriptions
-- single line comments with #
+- task dependencies with `@dep()` decorator
+- task descriptions with `@desc()` decorator
+- single line comments with `#`
 - importing other `.mog` files and using the tasks or variables with dot syntax
+- call another task in the middle of a task
+- execute an imported task directly from the cli `$ mog imported_mog.task_name`
 
 
 ## What does it look like?
@@ -37,9 +39,9 @@ v_path = [which v] # storing a shell eval into a variable
 # the default task which is executed when calling a bare 'mog' with no arguments
 @dep(run)
 default:
-# with a declared dependacy and no body this is basically an alias
+# with a declared dependency and no body this is basically an alias
 
-@dep(
+@dep( # defines dependencies that will be run before this task (in the same shell instance)
 	build
 	start
 	my_alias.some_task_name
