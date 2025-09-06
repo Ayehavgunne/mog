@@ -25,7 +25,7 @@ mut:
 	eof             bool
 }
 
-pub fn parse(file string) !Mog {
+pub fn parse(file string, args []string) !Mog {
 	tokens := lex(file)!
 	mut p := Parser{
 		tokens:        tokens
@@ -38,7 +38,8 @@ pub fn parse(file string) !Mog {
 		vars:    p.vars
 		tasks:   p.tasks
 		path:    os.getwd()
-		imports: do_import(p.import_paths)
+		imports: do_import(p.import_paths, args)
+		args:    args
 	}
 	mut new_vars := map[string]string{}
 	for key, var in m.vars {
@@ -55,16 +56,21 @@ pub fn parse(file string) !Mog {
 	return m
 }
 
-fn do_import(import_paths map[string]string) map[string]Mog {
+fn do_import(import_paths map[string]string, args []string) map[string]Mog {
 	mut imported_mogs := map[string]Mog{}
 	if import_paths.len > 0 {
 		for alias, path in import_paths {
-			os.chdir(os.abs_path(os.getwd() + '/' + path)) or { debug('Failed to change cwd') }
+			new_path := os.abs_path(os.getwd() + '/' + path)
+			if !os.exists(new_path) {
+				println('Path not found: ${new_path}')
+				exit(1)
+			}
+			os.chdir(new_path) or { debug('Failed to change cwd') }
 			contents := os.read_file('.mog') or {
 				println('Failed to read import: ${os.getwd()}/.mog')
 				exit(1)
 			}
-			imported_mogs[alias] = parse(contents) or {
+			imported_mogs[alias] = parse(contents, args) or {
 				println('Failed to parse import: ${os.getwd()}/.mog  ${err}')
 				exit(1)
 			}
@@ -135,7 +141,7 @@ fn (mut p Parser) process_next_token() ! {
 		}
 		p.tasks[command_name] = p.current_command
 		p.current_command = Task{}
-		if p.current_token.token_type == .command_name {
+		if p.current_token.token_type != .command_body {
 			return
 		}
 	}

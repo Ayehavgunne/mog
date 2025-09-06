@@ -1,9 +1,15 @@
+import (
+	another
+)
+
 val = yes
 uname = [uname -s]
 
 @dep(test2)
 default:
 
+@desc(hey)
+@dep(test2)
 test:
 	echo in src test
 	echo {uname}

@@ -183,9 +183,8 @@ fn (mut l Lexer) eat_command_body() !Token {
 		return l.eat_newline()
 	}
 	if l.current_char != indent {
-		debug("not at indent")
 		l.context = .root
-		return error("no indent")
+		return error('no indent')
 	}
 	l.skip_whitespace()
 	l.add_to_word(['\n', ''])

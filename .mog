@@ -29,20 +29,19 @@ fmt:
 
 @desc(for testing)
 test:
-	echo {v_path}
+	echo {$bold}{v_path}{$normal_intensity}
+	{up.test}
 	sleep 2
-	echo {$1}
+	echo {$dim}{$1}
 	echo Enter your name
 	read name
-	echo hello ${name}
-	echo ${EDITOR}
+	echo {$normal_intensity}hello ${name}
+	echo {$green}${EDITOR}
 	hogwash || echo no hogwash
 
 test2:
 	echo testing
-	pwd
-	cd ..
-	pwd
+	echo {v_path}
 
 @dep(up.test)
 test3:
