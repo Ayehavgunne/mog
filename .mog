@@ -1,5 +1,5 @@
 import (
-	src as up
+    src as up
 )
 
 v_path = [which v]
@@ -9,7 +9,7 @@ default:
 
 @desc(run mog, this is kinda circular)
 run:
-	v run .
+    v run .
 
 @desc(run mog with debug output)
 run_trace:

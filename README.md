@@ -2,7 +2,7 @@
 
 A simple task runner
 
-Define your tasks in a `.mog` file and run them with the `mog` command. Indentation is done with the tab character. Define a task named 'default' to be ran when `mog` is called without a task name.
+Define your tasks in a `.mog` file and run them with the `mog` command. Indentation is done with the tab character or 4 spaces. Define a task named 'default' to be ran when `mog` is called without a task name.
 
 
 ## Features
