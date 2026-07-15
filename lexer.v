@@ -176,7 +176,8 @@ fn (mut l Lexer) is_indent() bool {
 		if l.peek() == indent {
 			return true
 		}
-		if l.peek() == ' ' && l.peek(num: 2) == ' ' && l.peek(num: 3) == ' ' && l.peek(num: 4) == ' ' {
+		if l.peek() == ' ' && l.peek(num: 2) == ' ' && l.peek(num: 3) == ' '
+			&& l.peek(num: 4) == ' ' {
 			return true
 		}
 	}
@@ -187,7 +188,7 @@ fn (mut l Lexer) is_indent() bool {
 		return true
 	}
 	return false
-} 
+}
 
 fn (mut l Lexer) eat_command_body() !Token {
 	if l.current_char == '' || l.peek() == '' {

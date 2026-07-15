@@ -82,7 +82,7 @@ fn get_deps(m Mog, deps []string, options InterpolateOptions) []string {
 	return new_deps
 }
 
-fn interpolate_task(m Mog, mut task Task, options InterpolateOptions) string {
+fn interpolate_task(m Mog, mut task Task, _ InterpolateOptions) string {
 	mut new_body := []string{}
 
 	for line in task.body {
@@ -120,6 +120,7 @@ fn replace_mog_var(replacement string, args []string) string {
 		}
 		else {}
 	}
+
 	if replacement in built_in_vars {
 		return built_in_vars[replacement]
 	}
@@ -169,8 +170,8 @@ fn (m Mog) interpolate(options InterpolateOptions) string {
 					new_value += 'cd ${import_m.path}\n'
 					new_value += import_m.tasks[replacement_parts.last()].body.join('\n')
 					new_value += '\ncd - > /dev/null 2>&1\n'
-					imported_deps := get_deps(import_m, import_m.tasks[replacement_parts.last()].deps,
-						options)
+					imported_deps := get_deps(import_m,
+						import_m.tasks[replacement_parts.last()].deps, options)
 					new_value += imported_deps.join('\n')
 				}
 			} else {

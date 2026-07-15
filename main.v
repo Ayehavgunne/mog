@@ -40,7 +40,13 @@ fn main() {
 	}
 
 	mut mog_file_path := '.'
-	if '-p' in dash_args {
+	if '--home' in dash_args {
+		mog_file_path = os.home_dir()
+		os.chdir(mog_file_path) or {
+			println('Invalid path: ${mog_file_path}')
+			exit(1)
+		}
+	} else if '-p' in dash_args {
 		args.pop_left()
 		mog_file_path = positional_args.first()
 		mog_file_path = os.abs_path(cur_dir + '/' + mog_file_path)
@@ -186,7 +192,8 @@ fn print_list_help_topics() {
 
 fn print_options() {
 	println('Options:')
-	println('  -v:\t\t\tShow the commands that will be executed')
+	println('  -v:\t\t\tShow the commands that will be executed before running them')
+	println('  --home:\t\tRun the .mog file that is in your home directory. Ignores -p option')
 	println('  -p [path]:\t\tRun a .mog file from another location')
 	println('')
 	println("  --no-cd:\t\tDon't change cwd when running a mog file from another directory with '-p'")
