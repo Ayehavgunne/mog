@@ -2,7 +2,7 @@
 
 A simple task runner
 
-Define your tasks in a `.mog` file and run them with the `mog` command. Indentation is done with the tab character or 4 spaces. Define a task named 'default' to be ran when `mog` is called without a task name.
+Define your tasks in a `.mog` file and run them with the `mog` command. Indentation is done with the tab character or 4 spaces. Define a task named 'default' to be ran when `mog` is called without a task name. The biggest difference between mog and other task runners is that they all run each line in a seperate shell by default. Mog however will run the commands for a given task in the same shell instance which really helps with stuff like sourcing nvm. You don't have to add '&&\' to every command and put '. ~/.nmv/nvm.sh' everywhere over and over.
 
 
 ## Features
@@ -16,7 +16,6 @@ Define your tasks in a `.mog` file and run them with the `mog` command. Indentat
 - single line comments with `#`
 - importing other `.mog` files and using the tasks or variables with dot syntax
 - call another task in the middle of a task
-- execute an imported task directly from the cli `$ mog imported_mog.task_name`
 
 
 # Installation
