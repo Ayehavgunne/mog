@@ -5,15 +5,18 @@ import (
 val = yes
 uname = [uname -s]
 
-@dep(test2)
 default:
+    {test2}
 
 @desc(hey)
-@dep(test2)
 test:
+    {test2}
 	echo in src test
 	echo {uname}
 	pwd
 
 test2:
 	echo in test2
+
+test3:
+    echo you said {$1}
