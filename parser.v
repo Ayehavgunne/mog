@@ -43,15 +43,9 @@ pub fn parse(file string, args []string) !Mog {
 	}
 	mut new_vars := map[string]string{}
 	for key, var in m.vars {
-		new_vars[key] = m.interpolate(InterpolateOptions{
-			value:  var
-			is_var: true
-		})
+		new_vars[key] = interpolate_var(m, var)
 	}
 	m.vars = new_vars.move()
-	for _, mut task in m.tasks {
-		interpolate_task(m, mut task)
-	}
 	os.chdir(original_dir) or { debug('failed to ge back to original dir') }
 	return m
 }
@@ -62,16 +56,16 @@ fn do_import(import_paths map[string]string, args []string) map[string]Mog {
 		for alias, path in import_paths {
 			new_path := os.abs_path(os.getwd() + '/' + path)
 			if !os.exists(new_path) {
-				println('Path not found: ${new_path}')
+				eprint('Path not found: ${new_path}')
 				exit(1)
 			}
 			os.chdir(new_path) or { debug('Failed to change cwd') }
 			contents := os.read_file('.mog') or {
-				println('Failed to read import: ${os.getwd()}/.mog')
+				eprint('Failed to read import: ${os.getwd()}/.mog')
 				exit(1)
 			}
 			imported_mogs[alias] = parse(contents, args) or {
-				println('Failed to parse import: ${os.getwd()}/.mog  ${err}')
+				eprint('Failed to parse import: ${os.getwd()}/.mog ${err}')
 				exit(1)
 			}
 		}
@@ -114,9 +108,6 @@ fn (mut p Parser) process_next_token() ! {
 		}
 		p.context = .root
 		match decorator_name {
-			'dep' {
-				p.current_command.deps = values
-			}
 			'desc' {
 				p.current_command.desc = values.join(' ')
 			}

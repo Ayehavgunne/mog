@@ -1,0 +1,48 @@
+import (
+    a_dir as up
+)
+
+myvar = hi
+v_path = [which v]
+
+test:
+	pwd
+    echo $0
+    echo $SHELL
+    echo ${EDITOR}
+	echo {myvar}
+	echo {v_path}
+	echo yell {$1} and {$2}
+    {up.test2} shmoo peep
+    echo yarp
+
+test2:
+    {test3}
+
+test3:
+    echo wallaby {$1}
+
+@desc(for testing)
+test4:
+	echo {$bold}{v_path}{$normal_intensity}
+	{up.test}
+	sleep 2
+	echo {$dim}{$1}
+	echo Enter your name
+	read name
+	echo {$normal_intensity}hello ${name}
+	echo {$green}${EDITOR}
+	hogwash {$silence_out_err} || echo no hogwash
+
+test5:
+	pwd
+	echo test2
+
+test6:
+    {up.test}
+	echo {$#}
+	echo {up.val}
+	for arg in {$"@"}; do
+		echo "- $arg"
+	done
+	pwd

@@ -16,13 +16,11 @@ test2:
 	echo in examples
 	pwd
 
-@dep(
-	build
-	start
-	my_alias.some_task_name # refering to a task from an import
-)
 @desc(run my project)
 run:
+    {build}
+	{start}
+	{my_alias.some_task_name} # refering to a task from an import
 	echo ${EDITOR} # using a bash env var
 	{py} my_script.py
 
@@ -45,5 +43,5 @@ test:
 	hogwash || echo no hogwash
 
 # a task named 'default' will be called if mog is called without a specific task name
-@dep(test)
 default:
+    {test}

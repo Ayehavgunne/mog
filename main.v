@@ -48,7 +48,7 @@ fn main() {
 		}
 	} else if '-p' in dash_args {
 		args.pop_left()
-		mog_file_path = positional_args.first()
+		mog_file_path = positional_args.pop_left()
 		mog_file_path = os.abs_path(cur_dir + '/' + mog_file_path)
 		if !os.exists(mog_file_path) {
 			println('Invalid path: ${mog_file_path}')
@@ -81,6 +81,11 @@ fn main() {
 			exit(1)
 		}
 		debug('${m}')
+	}
+
+	if '-s' in dash_args || '--shell' in dash_args {
+		args.pop_left()
+		m.shell_path = positional_args.pop_left()
 	}
 
 	if '-l' in dash_args || '--list' in dash_args {
@@ -123,14 +128,11 @@ fn main() {
 	}
 
 	task_name := args.pop_left()
-	mut task := m.get_task(task_name) or {
-		eprint("No task named '${task_name}' found")
-		exit(1)
-	}
+	mut prepend := ''
 	if mog_file_path != '.' && '--no-cd' !in dash_args {
-		task.body.prepend('cd ${mog_file_path}')
+		prepend = 'cd ${mog_file_path}\n'
 	}
-	task.execute(verbose)
+	m.execute_task(task_name, verbose, prepend)
 }
 
 fn print_version() {
@@ -193,6 +195,7 @@ fn print_list_help_topics() {
 fn print_options() {
 	println('Options:')
 	println('  -v:\t\t\tShow the commands that will be executed before running them')
+	println('  -s | --shell:\t\tRun the .mog file commands with a different shell. Default is /bin/bash')
 	println('  --home:\t\tRun the .mog file that is in your home directory. Ignores -p option')
 	println('  -p [path]:\t\tRun a .mog file from another location')
 	println('')
