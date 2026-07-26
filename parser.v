@@ -41,11 +41,9 @@ pub fn parse(file string, args []string) !Mog {
 		imports: do_import(p.import_paths, args)
 		args:    args
 	}
-	mut new_vars := map[string]string{}
 	for key, var in m.vars {
-		new_vars[key] = interpolate_var(m, var)
+		m.vars[key] = interpolate_var(m, var)
 	}
-	m.vars = new_vars.move()
 	os.chdir(original_dir) or { debug('failed to ge back to original dir') }
 	return m
 }

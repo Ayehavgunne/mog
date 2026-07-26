@@ -73,12 +73,14 @@ fn replace_mog_arg(replacement string, args []string) string {
 
 struct Interpolator {
 mut:
-	mog          Mog
-	line         string
-	pos          int
-	current_char string
-	is_var       bool
-	eof          bool
+	mog            Mog
+	line           string
+	pos            int
+	current_char   string
+	dollar_seen    bool
+	dollar_replace bool
+	is_var         bool
+	eof            bool
 }
 
 fn interpolate_var(m Mog, var string) string {
@@ -91,10 +93,9 @@ fn interpolate_var(m Mog, var string) string {
 	}
 	mut result := []string{}
 	for !i.eof {
-		word := i.get_next_word()
-		result << word
+		result << i.eat()
 	}
-	return result.join(' ')
+	return result.join('')
 }
 
 fn interpolate(m Mog, task_name string) string {
@@ -112,10 +113,9 @@ fn interpolate(m Mog, task_name string) string {
 		}
 		mut result := []string{}
 		for !i.eof {
-			word := i.get_next_word()
-			result << word
+			result << i.eat()
 		}
-		lines << result.join(' ')
+		lines << result.join('')
 	}
 	return lines.join('\n')
 }
@@ -131,6 +131,9 @@ fn (mut i Interpolator) next_char() {
 		i.current_char = i.line[i.pos].ascii_str()
 	} else {
 		i.end_of_file()
+	}
+	if i.pos > 0 {
+		i.dollar_seen = i.line[i.pos - 1].ascii_str() == '$'
 	}
 }
 
@@ -148,7 +151,7 @@ fn (mut i Interpolator) eat_replacement() string {
 	if i.current_char == mog_var_char {
 		return i.eat_arg()
 	}
-	word := i.eat_till_char([close_replacement])
+	word := i.eat_till_char([close_replacement], true)
 	mut result := ''
 	if word.contains(import_namespace_delimiter)
 		&& word.split(import_namespace_delimiter).first() in i.mog.imports.keys() {
@@ -187,12 +190,12 @@ fn (mut i Interpolator) eat_replacement() string {
 
 fn (mut i Interpolator) eat_eval() string {
 	i.next_char()
-	eval := i.eat_till_char([close_eval])
+	eval := i.eat_till_char([close_eval], true)
 	return os.execute("${i.mog.shell_path} -c '${eval}'").output.trim_space()
 }
 
 fn (mut i Interpolator) eat_arg() string {
-	word := i.eat_till_char([close_replacement])
+	word := i.eat_till_char([close_replacement], true)
 	return replace_mog_arg(word, i.mog.args)
 }
 
@@ -204,7 +207,7 @@ fn (mut i Interpolator) eat_args() []string {
 		} else if i.current_char == ' ' {
 			i.next_char()
 		} else {
-			args << i.eat_till_char(['\n', ' ', '"', "'"])
+			args << i.eat_till_char(['\n', ' ', '"', "'"], true)
 		}
 	}
 	return args
@@ -216,10 +219,10 @@ fn (mut i Interpolator) eat_string() string {
 		quote = '"'
 	}
 	i.next_char()
-	return i.eat_till_char([quote])
+	return i.eat_till_char([quote], true)
 }
 
-fn (mut i Interpolator) eat_till_char(characters []string) string {
+fn (mut i Interpolator) eat_till_char(characters []string, advance bool) string {
 	mut word := ''
 	for i.current_char !in characters && i.current_char != '' && i.current_char != '\n' && !i.eof {
 		word += i.current_char
@@ -228,15 +231,15 @@ fn (mut i Interpolator) eat_till_char(characters []string) string {
 	if i.current_char == '\n' && !i.eof {
 		i.end_of_file()
 	}
-	i.next_char()
+	if advance { i.next_char() }
 	return word
 }
 
 fn (mut i Interpolator) eat_word() string {
-	return i.eat_till_char([' '])
+	return i.eat_till_char([open_replacement, open_eval, escape, '\n'], false)
 }
 
-fn (mut i Interpolator) get_next_word() string {
+fn (mut i Interpolator) eat() string {
 	if i.current_char == escape {
 		i.next_char()
 	}
@@ -246,13 +249,19 @@ fn (mut i Interpolator) get_next_word() string {
 		return ''
 	}
 
-	if i.current_char == ' ' {
-		i.next_char()
-		return ' '
+	if i.dollar_replace {
+		mut word := '{'
+		word += i.eat_till_char([close_replacement], true)
+		word += '}'
+		i.dollar_replace = false
+		return word
 	}
 
-	if i.current_char == open_replacement {
+	if i.current_char == open_replacement && !i.dollar_seen {
 		return i.eat_replacement()
+	}
+	if i.dollar_seen {
+		i.dollar_replace = true
 	}
 
 	if i.current_char == open_eval {
