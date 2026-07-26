@@ -4,6 +4,7 @@ import (
 
 myvar = hi
 v_path = [which v]
+something = {v_path}/place
 
 test:
 	pwd
@@ -12,6 +13,7 @@ test:
     echo ${EDITOR}
 	echo {myvar}
 	echo {v_path}
+	echo {something}
 	echo yell {$1} and {$2}
     {up.test2} shmoo peep
     echo yarp
