@@ -231,12 +231,18 @@ fn (mut i Interpolator) eat_till_char(characters []string, advance bool) string 
 	if i.current_char == '\n' && !i.eof {
 		i.end_of_file()
 	}
-	if advance { i.next_char() }
+	if advance {
+        i.next_char()
+    }
 	return word
 }
 
 fn (mut i Interpolator) eat_word() string {
-	return i.eat_till_char([open_replacement, open_eval, escape, '\n'], false)
+    mut chars := [open_replacement, escape]
+    if i.is_var {
+        chars << open_eval
+    }
+	return i.eat_till_char(chars, false)
 }
 
 fn (mut i Interpolator) eat() string {
@@ -264,10 +270,8 @@ fn (mut i Interpolator) eat() string {
 		i.dollar_replace = true
 	}
 
-	if i.current_char == open_eval {
-		if i.is_var {
-			return i.eat_eval()
-		}
+	if i.current_char == open_eval && i.is_var {
+		return i.eat_eval()
 	}
 
 	word := i.eat_word()
