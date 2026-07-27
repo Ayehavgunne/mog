@@ -4,7 +4,8 @@ import os
 import v.vmod
 import mog { Mog, debug, parse }
 
-const defualt_task = 'default'
+const default_task = 'default'
+const value_arg_keys = ["-s", "--shell", "-p"]
 
 fn main() {
 	cur_dir := os.getwd()
@@ -12,7 +13,7 @@ fn main() {
 	mog_file_name := args.pop_left().split('/').last()
 	mut dash_args := []string{}
 
-	if args.len > 0 && args.first() == 'symlink' {
+	if args.len > 0 && args.first() == '--symlink' {
 		result := os.execute('ln -s ${cur_dir}/${mog_file_name} ${os.home_dir()}/.local/bin/mog')
 		if result.exit_code == 0 {
 			println('Linked ${cur_dir}/${mog_file_name} to ${os.home_dir()}/.local/bin/mog')
@@ -23,14 +24,30 @@ fn main() {
 	}
 
 	mut positional_args := []string{}
-	for arg in args {
-		if arg.starts_with('-') {
-			dash_args << arg
+	mut value_args := map[string]string{}
+	mut skip := false
+	for index, arg in args {
+		if arg in value_arg_keys {
+			value_args[arg] = args[index + 1]
+			skip = true
+			continue
+		}
+		if !skip {
+			if arg.starts_with('-') {
+				dash_args << arg
+			} else {
+				positional_args << arg
+			}
 		} else {
-			positional_args << arg
+			skip = false
+			continue
 		}
 	}
 	for _ in dash_args {
+		args.pop_left()
+	}
+	for _ in value_args.keys() {
+		args.pop_left()
 		args.pop_left()
 	}
 
@@ -46,9 +63,8 @@ fn main() {
 			println('Invalid path: ${mog_file_path}')
 			exit(1)
 		}
-	} else if '-p' in dash_args {
-		args.pop_left()
-		mog_file_path = positional_args.pop_left()
+	} else if '-p' in value_args {
+		mog_file_path = value_args['-p']
 		mog_file_path = os.abs_path(cur_dir + '/' + mog_file_path)
 		if !os.exists(mog_file_path) {
 			println('Invalid path: ${mog_file_path}')
@@ -83,9 +99,11 @@ fn main() {
 		debug('${m}')
 	}
 
-	if '-s' in dash_args || '--shell' in dash_args {
-		args.pop_left()
-		m.shell_path = positional_args.pop_left()
+	if '-s' in value_args {
+		m.shell_path = value_args['-s']
+	}
+	if '--shell' in value_args {
+		m.shell_path = value_args['--shell']
 	}
 
 	if '-l' in dash_args || '--list' in dash_args {
@@ -94,17 +112,17 @@ fn main() {
 	}
 
 	mut verbose := false
-	if '-v' in dash_args {
+	if '-v' in dash_args || '--verbose' in dash_args {
 		verbose = true
 	}
 
-	if '-h' in dash_args || '--help' in dash_args || (args.len > 0 && 'help' == args.first()) {
-		if args.len > 1 {
-			if args[1] == 'arguments' {
+	if '-h' in dash_args || '--help' in dash_args {
+		if args.len > 0 {
+			if args[0] == 'arguments' {
 				print_arguments_help()
 				exit(0)
 			}
-			if args[1] == 'variables' {
+			if args[0] == 'variables' {
 				print_builtin_vars_help()
 				exit(0)
 			}
@@ -113,13 +131,13 @@ fn main() {
 		exit(0)
 	}
 
-	if args.len == 0 && defualt_task in m.tasks {
-		args << defualt_task
+	if args.len == 0 && default_task in m.tasks {
+		args << default_task
 	}
 
 	if args.len == 0 {
 		if mog_file != '' {
-			println("Add a task named '${defualt_task}' to the .mog file to have it run when no task is provided to the mog command\n")
+			println("Add a task named '${default_task}' to the .mog file to have it run when no task is provided to the mog command\n")
 		}
 		print_version()
 		println('')
@@ -170,12 +188,10 @@ fn sub_print_commands(m Mog, mog_name string) {
 }
 
 fn print_help(m ?Mog) {
-	println('Mog is a tool for running tasks from a .mog file in the current directory\n')
+	println('Mog is a tool for running common cli tasks from a .mog file\n')
 	println('Usage:')
-	println('  mog [options] [task] [arguments]\n')
+	println('  mog [options] [task] [arg1] [arg2] ...\n')
 	print_options()
-	println('')
-	print_builtins_help()
 	println('')
 	print_list_help_topics()
 	println('')
@@ -187,29 +203,24 @@ fn print_help(m ?Mog) {
 }
 
 fn print_list_help_topics() {
-	println('Help topics (run "mog help [topic]"):')
-	println('  arguments:\tShow information on using forwarded arguments from the cli')
-	println('  variables:\tShow built in variables')
+	println('Help topics (run "mog (-h|--help) [topic]"):')
+	println('  arguments:\tShow information on using forwarded arguments from the cli to tasks')
+	println('  variables:\tShow built in variables that can be used in your tasks')
 }
 
 fn print_options() {
 	println('Options:')
-	println('  -v:\t\t\tShow the commands that will be executed before running them')
-	println('  -s | --shell:\t\tRun the .mog file commands with a different shell. Default is /bin/bash')
-	println('  --home:\t\tRun the .mog file that is in your home directory. Ignores -p option')
-	println('  -p [path]:\t\tRun a .mog file from another location')
+	println('  -v | --verbose:\t\tShow the commands that will be executed before running them')
+	println('  -s | --shell [shell_path]:\tRun the .mog file commands with a different shell. Default is /bin/bash')
+	println('  --home:\t\t\tRun the .mog file that is in your home directory. Ignores -p option')
+	println('  -p [path]:\t\t\tRun a .mog file from another location')
 	println('')
-	println("  --no-cd:\t\tDon't change cwd when running a mog file from another directory with '-p'")
+	println("  --no-cd:\t\t\tDon't change cwd when running a mog file from another directory with '-p'")
+	println('  --symlink:\t\t\tCreate a symlink for the mog command to ~/.local/bin')
 	println('')
-	println('  -l | --list:\t\tList available tasks')
-	println('  -h | --help:\t\tShow the help output')
-	println('  -V | --version:\tShow the version of mog')
-}
-
-fn print_builtins_help() {
-	println("Built in tasks (these shouldn't be used in a .mog file):")
-	println('  help:\t\tShow the help output')
-	println('  symlink:\tCreate a symlink for the mog command to ~/.local/bin')
+	println('  -l | --list:\t\t\tList available tasks')
+	println('  -h | --help:\t\t\tShow the help output')
+	println('  -V | --version:\t\tShow the version of mog')
 }
 
 fn print_arguments_help() {
