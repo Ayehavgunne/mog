@@ -225,6 +225,9 @@ fn (mut i Interpolator) eat_string() string {
 fn (mut i Interpolator) eat_till_char(characters []string, advance bool) string {
 	mut word := ''
 	for i.current_char !in characters && i.current_char != '' && i.current_char != '\n' && !i.eof {
+		if i.current_char == "'" {
+			word += "'\\'"
+		}
 		word += i.current_char
 		i.next_char()
 	}
@@ -232,22 +235,25 @@ fn (mut i Interpolator) eat_till_char(characters []string, advance bool) string 
 		i.end_of_file()
 	}
 	if advance {
-        i.next_char()
-    }
+		i.next_char()
+	}
 	return word
 }
 
 fn (mut i Interpolator) eat_word() string {
-    mut chars := [open_replacement, escape]
-    if i.is_var {
-        chars << open_eval
-    }
+	mut chars := [open_replacement, escape]
+	if i.is_var {
+		chars << open_eval
+	}
 	return i.eat_till_char(chars, false)
 }
 
 fn (mut i Interpolator) eat() string {
 	if i.current_char == escape {
 		i.next_char()
+		ch := i.current_char
+		i.next_char()
+		return ch
 	}
 
 	if i.current_char == '' || i.current_char == '\n' {

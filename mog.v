@@ -34,13 +34,13 @@ pub fn (m Mog) get_task(name string) ?Task {
 }
 
 pub fn (mut m Mog) execute_task(task_name string, verbose bool, prepend string) {
-	body := interpolate(m, task_name)
-	debug(body)
+	mut body := interpolate(m, task_name)
+	body = "${m.shell_path} -c '${prepend}${body}'"
 	if verbose {
 		println('Executing the following commands:\n')
 		println(body)
 		println('${built_in_vars['\$normal']}\n---\n')
 	}
-	exit_code := os.system("${m.shell_path} -c '${prepend}${body}'")
+	exit_code := os.system(body)
 	println('${built_in_vars['\$normal']}\nExit Code: ${exit_code}')
 }

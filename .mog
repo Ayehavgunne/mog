@@ -3,6 +3,7 @@ import (
 )
 
 v_path = [which v]
+version = [cat v.mod | grep version | cut -d ":" -f 2 | xargs]
 
 default:
     {fmt}
@@ -55,11 +56,16 @@ a:
 	{amend}
 
 tag:
-    git tag {$1}
+    git tag {version}
     git push origin --tags
+
+release:
+    cp ./release/mog ~/Downloads/mog_darwin_arm64
+    gh release create {version} ~/Downloads/mog_darwin_arm64
 
 @desc(for testing)
 test:
+    echo {version}
 	echo {$bold}{v_path}{$normal_intensity}
 	{up.test}
 	sleep 2

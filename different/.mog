@@ -2,7 +2,23 @@ import (
     a_dir as up
 )
 
+myvar = hi
+v_path = [which v]
+something = {v_path}/place
 
+test:
+	pwd
+    echo "don't do"
+	echo 'do \{ do'
+	echo $0
+    echo $SHELL
+    echo ${EDITOR}
+	echo {myvar}
+	echo {v_path}
+	echo {something}
+	echo yell {$1} and {$2}
+    {up.test2} shmoo peep
+    echo yarp
 
 test2:
     if [[ "{$1}" == "" ]]; then
