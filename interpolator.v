@@ -74,6 +74,7 @@ fn replace_mog_arg(replacement string, args []string) string {
 struct Interpolator {
 mut:
 	mog            Mog
+	task_name      string
 	line           string
 	pos            int
 	current_char   string
@@ -107,6 +108,7 @@ fn interpolate(m Mog, task_name string) string {
 	for line in task.body {
 		mut i := Interpolator{
 			mog:          m
+			task_name:    task_name
 			line:         line
 			pos:          0
 			current_char: line[0].ascii_str()
@@ -191,7 +193,7 @@ fn (mut i Interpolator) eat_replacement() string {
 fn (mut i Interpolator) eat_eval() string {
 	i.next_char()
 	eval := i.eat_till_char([close_eval], true)
-	return os.execute("${i.mog.shell_path} -c '${eval}'").output.trim_space()
+	return os.execute("${i.mog.get_config_from_task(i.task_name).shell_path} -c '${eval}'").output.trim_space()
 }
 
 fn (mut i Interpolator) eat_arg() string {

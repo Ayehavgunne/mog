@@ -2,10 +2,24 @@ module mog
 
 import os
 
+pub const config_path = os.expand_tilde_to_home('~/.config/mog')
+pub const config_file_path = '${config_path}/config'
+
+pub struct Config {
+pub mut:
+	shell_path              string = '/bin/bash'
+	source_file             string
+	exit_on_error           bool
+	error_on_undefined_vars bool
+	print_commands          bool
+	exit_on_pipe_failures   bool
+}
+
 pub struct Task {
 pub mut:
-	desc string
-	body []string
+	desc   string
+	config ?Config
+	body   []string
 }
 
 pub struct Mog {
@@ -13,10 +27,10 @@ pub:
 	tasks map[string]Task
 	path  string
 pub mut:
-	vars       map[string]string
-	imports    map[string]Mog
-	args       []string
-	shell_path string = '/bin/bash'
+	vars    map[string]string
+	imports map[string]Mog
+	args    []string
+	config  Config
 }
 
 pub fn (m Mog) get_task(name string) ?Task {
@@ -33,9 +47,23 @@ pub fn (m Mog) get_task(name string) ?Task {
 	return none
 }
 
+pub fn (m Mog) get_config_from_task(task_name string) Config {
+	if task := m.get_task(task_name) {
+		return task.config or { m.config }
+	}
+	return m.config
+}
+
 pub fn (mut m Mog) execute_task(task_name string, verbose bool, prepend string) {
 	mut body := interpolate(m, task_name)
-	body = "${m.shell_path} -c '${prepend}${body}'"
+	mut source := ''
+	config := m.get_config_from_task(task_name)
+	if config.source_file.len > 0 {
+		source = '. ${config.source_file}\n'
+	}
+	body = '${prepend}${source}${body}'
+	body = '${add_option_flags(config)}\n${body}'
+	body = "${config.shell_path} -c '${body}'"
 	if verbose {
 		println('Executing the following commands:\n')
 		println(body)
@@ -43,4 +71,72 @@ pub fn (mut m Mog) execute_task(task_name string, verbose bool, prepend string) 
 	}
 	exit_code := os.system(body)
 	println('${built_in_vars['\$normal']}\nExit Code: ${exit_code}')
+	exit(exit_code)
+}
+
+fn add_option_flags(config Config) string {
+	mut result := 'set -'
+	if config.exit_on_error {
+		result += 'e'
+	}
+	if config.error_on_undefined_vars {
+		result += 'u'
+	}
+	if config.print_commands {
+		result += 'x'
+	}
+	if config.exit_on_pipe_failures {
+		result += 'o pipefail'
+	}
+	return result
+}
+
+@[params]
+pub struct ParseConfigOptions {
+	contents string
+mut:
+	config Config
+}
+
+pub fn parse_config(p ParseConfigOptions) !Config {
+	mut file_contents := ''
+	if p.contents.len == 0 {
+		file_contents = os.read_file(config_file_path) or {
+			eprint('Failed to read config file\n')
+			return error('Failed to read config file')
+		}
+	} else {
+		file_contents = p.contents
+	}
+	mut config := Config{
+		shell_path:  p.config.shell_path
+		source_file: p.config.source_file
+	}
+	for line in file_contents.split_into_lines() {
+		mut parts := line.split('=')
+		if parts.len < 2 {
+			parts << ''
+		}
+		key := parts[0].trim_space()
+		value := parts[1].trim_space()
+		if key == 'shell_path' {
+			config.shell_path = value
+		}
+		if key == 'source_file' {
+			config.source_file = value
+		}
+		if key == 'exit_on_error' {
+			config.exit_on_error = value == 'true'
+		}
+		if key == 'error_on_undefined_vars' {
+			config.error_on_undefined_vars = value == 'true'
+		}
+		if key == 'print_commands' {
+			config.print_commands = value == 'true'
+		}
+		if key == 'exit_on_pipe_failures' {
+			config.exit_on_pipe_failures = value == 'true'
+		}
+	}
+	return config
 }

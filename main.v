@@ -2,10 +2,10 @@ module main
 
 import os
 import v.vmod
-import mog { Mog, debug, parse }
+import mog { Config, Mog, ParseConfigOptions, debug, parse, parse_config }
 
 const default_task = 'default'
-const value_arg_keys = ["-s", "--shell", "-p"]
+const value_arg_keys = ['-s', '--shell', '-p']
 
 fn main() {
 	cur_dir := os.getwd()
@@ -56,6 +56,11 @@ fn main() {
 		exit(0)
 	}
 
+	if '--init-config' in dash_args {
+		os.system("mkdir -p ${mog.config_path} && touch ${mog.config_file_path} && echo 'shell_path=/bin/bash' > ${mog.config_file_path}")
+		exit(0)
+	}
+
 	mut mog_file_path := '.'
 	if '--home' in dash_args {
 		mog_file_path = os.home_dir()
@@ -89,10 +94,12 @@ fn main() {
 		parse_args = args[1..].clone()
 	}
 
+	config := parse_config(ParseConfigOptions{}) or { Config{} }
+
 	mut m := Mog{}
 
 	if mog_file.len > 0 {
-		m = parse(mog_file, parse_args) or {
+		m = parse(mog_file, parse_args, config) or {
 			println('Failed to parse .mog file. ${err}')
 			exit(1)
 		}
@@ -100,10 +107,10 @@ fn main() {
 	}
 
 	if '-s' in value_args {
-		m.shell_path = value_args['-s']
+		m.config.shell_path = value_args['-s']
 	}
 	if '--shell' in value_args {
-		m.shell_path = value_args['--shell']
+		m.config.shell_path = value_args['--shell']
 	}
 
 	if '-l' in dash_args || '--list' in dash_args {
