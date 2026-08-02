@@ -6,10 +6,12 @@ myvar = hi
 v_path = [which v]
 something = {v_path}/place
 
+
 test:
 	pwd
-    echo "don't do"
-	echo 'do \{ do'
+    echo "don't {v_path} ${SHELL} tween"
+	echo 'feeb \{ frog'
+	echo $ZSH_THEME
 	echo $0
     echo $SHELL
     echo ${EDITOR}

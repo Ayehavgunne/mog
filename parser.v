@@ -20,16 +20,18 @@ mut:
 	vars            map[string]string
 	tasks           map[string]Task
 	current_command Task
+	config          Config
 	current_token   Token
 	context         ParserContext
 	eof             bool
 }
 
-pub fn parse(file string, args []string) !Mog {
+pub fn parse(file string, args []string, config Config) !Mog {
 	tokens := lex(file)!
 	mut p := Parser{
 		tokens:        tokens
 		current_token: tokens[0]
+		config:        config
 	}
 	for !p.eof {
 		p.process_next_token()!
@@ -38,8 +40,9 @@ pub fn parse(file string, args []string) !Mog {
 		vars:    p.vars
 		tasks:   p.tasks
 		path:    os.getwd()
-		imports: do_import(p.import_paths, args)
+		imports: do_import(p.import_paths, args, config)
 		args:    args
+		config:  config
 	}
 	for key, var in m.vars {
 		m.vars[key] = interpolate_var(m, var)
@@ -48,7 +51,7 @@ pub fn parse(file string, args []string) !Mog {
 	return m
 }
 
-fn do_import(import_paths map[string]string, args []string) map[string]Mog {
+fn do_import(import_paths map[string]string, args []string, config Config) map[string]Mog {
 	mut imported_mogs := map[string]Mog{}
 	if import_paths.len > 0 {
 		for alias, path in import_paths {
@@ -62,7 +65,7 @@ fn do_import(import_paths map[string]string, args []string) map[string]Mog {
 				eprint('Failed to read import: ${os.getwd()}/.mog')
 				exit(1)
 			}
-			imported_mogs[alias] = parse(contents, args) or {
+			imported_mogs[alias] = parse(contents, args, config) or {
 				eprint('Failed to parse import: ${os.getwd()}/.mog ${err}')
 				exit(1)
 			}
@@ -109,8 +112,14 @@ fn (mut p Parser) process_next_token() ! {
 			'desc' {
 				p.current_command.desc = values.join(' ')
 			}
+			'options' {
+				p.current_command.config = parse_config(
+					contents: values.join('\n')
+					config:   p.config
+				) or { p.config }
+			}
 			else {
-				return error('Unrecognized decorator type ${decorator_name}')
+				return error("Unrecognized decorator type '${decorator_name}'")
 			}
 		}
 	}
