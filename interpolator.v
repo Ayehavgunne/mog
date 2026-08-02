@@ -46,6 +46,9 @@ fn replace_mog_arg(replacement string, args []string) string {
 		if replacement == '$${index + 1}' {
 			return arg
 		}
+		if replacement == '"$${index + 1}"' {
+			return '"${arg}"'
+		}
 	}
 	match replacement {
 		'$#' {

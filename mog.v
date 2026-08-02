@@ -110,8 +110,7 @@ pub fn parse_config(p ParseConfigOptions) !Config {
 	mut file_contents := ''
 	if p.contents.len == 0 {
 		file_contents = os.read_file(config_file_path) or {
-			eprint('Failed to read config file\n')
-			return error('Failed to read config file')
+			''
 		}
 	} else {
 		file_contents = p.contents
