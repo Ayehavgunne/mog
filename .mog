@@ -4,6 +4,9 @@ import (
 
 v_path = [which v]
 version = [cat v.mod | grep version | cut -d ":" -f 2 | xargs]
+kernel = [uname -s | tr "[:upper:]" "[:lower:]"]
+arch = [uname -m | tr "[:upper:]" "[:lower:]" | sed -e 's/aarch64/arm64/g' -e 's/x86_64/amd64/g']
+upload_path = ./release/mog_{kernel}_{arch}
 
 default:
     {fmt}
@@ -60,8 +63,12 @@ tag:
     git push origin --tags
 
 release:
-    cp ./release/mog ~/Downloads/mog_darwin_arm64
-    gh release create {version} ~/Downloads/mog_darwin_arm64
+    cp ./release/mog {upload_path}
+    if [[ {$1} == "" ]]; then
+        gh release create {version} {upload_path}
+    else
+        gh release upload --clobber {version} {upload_path}
+    fi
 
 @desc(for testing)
 test:
@@ -77,15 +84,18 @@ test:
 	hogwash {$silence_out_err} || echo no hogwash
 
 test2:
-    echo {v_path}
-    {up.test}
-	{test3}
+    echo {kernel}
+    echo {arch}
 
 test3:
     {up.test3} "a thing"
-	echo {$#}
 	echo {up.val}
+	echo {$#}
+	echo {$@}
+	echo {$"@"}
+	echo {$*}
+	echo {$"*"}
 	for arg in {$"@"}; do
-		echo "- $arg"
+		echo "- ${arg}"
 	done
 	pwd
