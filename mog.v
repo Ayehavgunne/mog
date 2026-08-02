@@ -9,6 +9,7 @@ pub struct Config {
 pub mut:
 	shell_path              string = '/bin/bash'
 	source_file             string
+	no_cd                   bool
 	exit_on_error           bool
 	error_on_undefined_vars bool
 	print_commands          bool
@@ -61,7 +62,11 @@ pub fn (mut m Mog) execute_task(task_name string, verbose bool, prepend string) 
 	if config.source_file.len > 0 {
 		source = '. ${config.source_file}\n'
 	}
-	body = '${prepend}${source}${body}'
+	if config.no_cd {
+		body = '${source}${body}'
+	} else {
+		body = '${prepend}${source}${body}'
+	}
 	body = '${add_option_flags(config)}\n${body}'
 	body = "${config.shell_path} -c '${body}'"
 	if verbose {
@@ -70,6 +75,9 @@ pub fn (mut m Mog) execute_task(task_name string, verbose bool, prepend string) 
 		println('${built_in_vars['\$normal']}\n---\n')
 	}
 	exit_code := os.system(body)
+	if exit_code == 2 {
+		eprint('\nBODY:\n${body}\n')
+	}
 	println('${built_in_vars['\$normal']}\nExit Code: ${exit_code}')
 	exit(exit_code)
 }
@@ -124,6 +132,9 @@ pub fn parse_config(p ParseConfigOptions) !Config {
 		}
 		if key == 'source_file' {
 			config.source_file = value
+		}
+		if key == 'no_cd' {
+			config.no_cd = value == 'true'
 		}
 		if key == 'exit_on_error' {
 			config.exit_on_error = value == 'true'

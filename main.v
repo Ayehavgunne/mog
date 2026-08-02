@@ -6,6 +6,7 @@ import mog { Config, Mog, ParseConfigOptions, debug, parse, parse_config }
 
 const default_task = 'default'
 const value_arg_keys = ['-s', '--shell', '-p']
+const default_configs = 'shell_path=/bin/bash\nexit_on_error=true\nerror_on_undefined_vars=true\nexit_on_pipe_failures=true'
 
 fn main() {
 	cur_dir := os.getwd()
@@ -57,7 +58,7 @@ fn main() {
 	}
 
 	if '--init-config' in dash_args {
-		os.system("mkdir -p ${mog.config_path} && touch ${mog.config_file_path} && echo 'shell_path=/bin/bash' > ${mog.config_file_path}")
+		os.system("mkdir -p ${mog.config_path} && touch ${mog.config_file_path} && echo '${default_configs}' > ${mog.config_file_path}")
 		exit(0)
 	}
 
