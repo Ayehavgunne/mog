@@ -2,7 +2,7 @@ module main
 
 import os
 import v.vmod
-import mog { Config, Mog, ParseConfigOptions, debug, parse, parse_config }
+import mog { Config, Mog, debug, parse, parse_config }
 
 const default_task = 'default'
 const value_arg_keys = ['-s', '--shell', '-p', '--config-path']
@@ -110,7 +110,7 @@ fn main() {
 		config_path = value_args['--config-path']
 	}
 
-	config := parse_config(ParseConfigOptions{ config_path: config_path }) or { Config{} }
+	config := parse_config(config_path: config_path) or { Config{} }
 
 	mut m := Mog{}
 

@@ -46,9 +46,6 @@ fn replace_mog_arg(replacement string, args []string) string {
 		if replacement == '$${index + 1}' {
 			return arg
 		}
-		if replacement == '"$${index + 1}"' {
-			return '"${arg}"'
-		}
 	}
 	match replacement {
 		'$#' {
@@ -143,6 +140,21 @@ fn (mut i Interpolator) next_char() {
 	}
 }
 
+fn (mut i Interpolator) peek(options PeekOptions) string {
+	mut peek_pos := i.pos + options.num
+	if options.skip_whitespace {
+		for peek_pos < i.line.len - 1 && i.line[peek_pos].ascii_str() == ' '
+			&& i.line[peek_pos].ascii_str() != '\n' {
+			peek_pos += 1
+		}
+		return i.line[peek_pos].ascii_str()
+	}
+	if peek_pos > i.line.len - 1 {
+		return ''
+	}
+	return i.line[peek_pos].ascii_str()
+}
+
 fn (mut i Interpolator) eat_rest_of_line() string {
 	line := i.line[i.pos..]
 	for _ in line {
@@ -155,11 +167,7 @@ fn (mut i Interpolator) eat_rest_of_line() string {
 fn (mut i Interpolator) eat_replacement() string {
 	i.next_char()
 	if i.current_char == mog_var_char {
-		arg := i.eat_arg()
-		if i.current_char in quotes {
-			i.next_char()
-		}
-		return arg
+		return i.eat_arg()
 	}
 	word := i.eat_till_char([close_replacement], true)
 	mut result := ''
@@ -243,11 +251,17 @@ fn (mut i Interpolator) eat_string() string {
 		}
 
 		if i.current_char == escape {
-			word += i.eat_escape()
+			if i.peek() in quotes {
+				word += i.leave_escape()
+			} else {
+				word += i.eat_escape()
+			}
+			continue
 		}
 
 		if i.current_char == open_replacement && !i.dollar_seen {
 			word += i.eat_replacement()
+			continue
 		}
 
 		word += i.current_char
@@ -260,7 +274,7 @@ fn (mut i Interpolator) eat_string() string {
 		word = '${quote}${word}${quote}'
 	}
 
-	if i.current_char in quotes {
+	if i.current_char == quote {
 		i.next_char()
 	}
 
@@ -297,6 +311,14 @@ fn (mut i Interpolator) eat_word() string {
 fn (mut i Interpolator) eat_escape() string {
 	i.next_char()
 	ch := i.current_char
+	i.next_char()
+	return ch
+}
+
+fn (mut i Interpolator) leave_escape() string {
+	mut ch := i.current_char
+	i.next_char()
+	ch += i.current_char
 	i.next_char()
 	return ch
 }
