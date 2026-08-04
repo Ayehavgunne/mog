@@ -36,6 +36,10 @@ start:
 	echo '{h}'
 	{v_path} run .
 
+@options( # override the default configs per task with the options decorator
+    shell_path=/bin/bash
+    source_file=
+)
 @desc(for testing)
 test:
 	echo hello

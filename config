@@ -1,0 +1,7 @@
+shell_path=/bin/bash
+source_file=
+no_cd=false
+exit_on_error=false
+error_on_undefined_vars=true
+exit_on_pipe_failures=false
+print_commands=false

@@ -44,7 +44,7 @@ c:
 
 amend:
 	git add -A
-	if [ {$#} -eq 0 ]; then
+	if [[ {$#} -eq 0 ]]; then
 		git commit --amend --no-edit
 	else
 		output=()
@@ -70,6 +70,10 @@ release:
         gh release upload --clobber {version} {upload_path}
     fi
 
+@options(
+    shell_path=/bin/bash
+    source_file=
+)
 @desc(for testing)
 test:
     echo {version}

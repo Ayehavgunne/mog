@@ -9,8 +9,8 @@ something = {v_path}/place
 
 test:
 	pwd
-    echo "don't {v_path} ${SHELL} tween"
-	echo 'feeb \{ frog'
+    echo "don't {v_path} ${SHELL} stuff"
+	echo 'foo \{ bar'
 	echo $ZSH_THEME
 	echo $0
     echo $SHELL
