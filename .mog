@@ -1,7 +1,4 @@
-import (
-    src as up
-)
-
+src = src
 v_path = [which v]
 version = [cat v.mod | grep version | cut -d ":" -f 2 | xargs]
 kernel = [uname -s | tr "[:upper:]" "[:lower:]"]
@@ -11,28 +8,24 @@ upload_path = ./release/mog_{kernel}_{arch}
 default:
     {fmt}
 
-@desc(run mog, this is kinda circular)
-run:
-    v run .
-
 @desc(run mog with debug output)
 run_trace:
-	v -d trace_logs run .
+	v -d trace_logs run {src}
 
 b:
 	{build}
 
 @desc(build mog into an executable)
 build:
-	mkdir -p release && v -prod -o release/mog . && echo built
+	mkdir -p release && v -prod -o release/mog {src} && echo built
 
 @desc(check if code can be compiled successfully)
 check:
-	v -check . && echo code is good
+	v -check {src} && echo code is good
 
 @desc(format mog code to v standards)
 fmt:
-	v fmt . -w
+	v fmt {src} -w
 
 commit:
 	git add -A
@@ -69,37 +62,3 @@ release:
     else
         gh release upload --clobber {version} {upload_path}
     fi
-
-@options(
-    shell_path=/bin/bash
-    source_file=
-)
-@desc(for testing)
-test:
-    echo {version}
-	echo {$bold}{v_path}{$normal_intensity}
-	{up.test}
-	sleep 2
-	echo {$dim}{$1}
-	echo Enter your name
-	read name
-	echo {$normal_intensity}hello ${name}
-	echo {$green}${EDITOR}
-	hogwash {$silence_out_err} || echo no hogwash
-
-test2:
-    echo {kernel}
-    echo {arch}
-
-test3:
-    {up.test3} "a thing"
-	echo {up.val}
-	echo {$#}
-	echo {$@}
-	echo {$"@"}
-	echo {$*}
-	echo {$"*"}
-	for arg in {$"@"}; do
-		echo "- ${arg}"
-	done
-	pwd

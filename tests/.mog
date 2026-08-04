@@ -13,10 +13,9 @@ test:
 	echo 'foo \{ bar'
 	echo $ZSH_THEME
 	echo $0
-    echo $SHELL
     echo ${EDITOR}
 	echo {myvar}
-	echo {v_path}
+	echo "\"\{{v_path}'"
 	echo {something}
 	echo yell {$1} and {$2}
     {up.test2} shmoo peep
@@ -33,6 +32,10 @@ test2:
 test3:
     echo wallaby {$1}
 
+@options(
+	shell_path=/bin/bash
+	source_file=
+)
 @desc(for testing)
 test4:
 	echo {$bold}{v_path}{$normal_intensity}
@@ -47,7 +50,7 @@ test4:
 
 test5:
 	pwd
-	echo test2
+	echo test5
 
 test6:
     {up.test}
