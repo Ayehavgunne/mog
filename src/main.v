@@ -2,11 +2,11 @@ module main
 
 import os
 import v.vmod
-import mog { Config, Mog, ParseConfigOptions, debug, parse, parse_config }
+import mog { Config, Mog, debug, parse, parse_config }
 
 const default_task = 'default'
-const value_arg_keys = ['-s', '--shell', '-p']
-const default_configs = 'shell_path=/bin/bash\nexit_on_error=true\nerror_on_undefined_vars=true\nexit_on_pipe_failures=true'
+const value_arg_keys = ['-s', '--shell', '-p', '--config-path']
+const default_configs = 'shell_path=/bin/bash\nexit_on_error=false\nerror_on_undefined_vars=false\nexit_on_pipe_failures=false'
 
 fn main() {
 	cur_dir := os.getwd()
@@ -27,15 +27,29 @@ fn main() {
 	mut positional_args := []string{}
 	mut value_args := map[string]string{}
 	mut skip := false
+	mut args_to_skip := 0
 	for index, arg in args {
+		if arg.contains('=') {
+			arg_parts := arg.split('=')
+			if arg_parts[0] in value_arg_keys {
+				value_args[arg_parts[0]] = arg_parts[1]
+				args_to_skip += 1
+				continue
+			} else {
+				eprint("Error parsing the command line arguments. '${arg}' is invalid\n")
+				exit(1)
+			}
+		}
 		if arg in value_arg_keys {
 			value_args[arg] = args[index + 1]
 			skip = true
+			args_to_skip += 2
 			continue
 		}
 		if !skip {
 			if arg.starts_with('-') {
 				dash_args << arg
+				args_to_skip += 1
 			} else {
 				positional_args << arg
 			}
@@ -44,11 +58,7 @@ fn main() {
 			continue
 		}
 	}
-	for _ in dash_args {
-		args.pop_left()
-	}
-	for _ in value_args.keys() {
-		args.pop_left()
+	for _ in 0 .. args_to_skip {
 		args.pop_left()
 	}
 
@@ -95,7 +105,12 @@ fn main() {
 		parse_args = args[1..].clone()
 	}
 
-	config := parse_config(ParseConfigOptions{}) or { Config{} }
+	mut config_path := mog.config_file_path
+	if '--config-path' in value_args {
+		config_path = value_args['--config-path']
+	}
+
+	config := parse_config(config_path: config_path) or { Config{} }
 
 	mut m := Mog{}
 
@@ -132,6 +147,10 @@ fn main() {
 			}
 			if args[0] == 'variables' {
 				print_builtin_vars_help()
+				exit(0)
+			}
+			if args[0] in ['options', 'configs'] {
+				print_config_help()
 				exit(0)
 			}
 		}
@@ -212,8 +231,9 @@ fn print_help(m ?Mog) {
 
 fn print_list_help_topics() {
 	println('Help topics (run "mog (-h|--help) [topic]"):')
-	println('  arguments:\tShow information on using forwarded arguments from the cli to tasks')
-	println('  variables:\tShow built in variables that can be used in your tasks')
+	println('  arguments:\t\tShow information on using forwarded arguments from the cli to tasks')
+	println('  variables:\t\tShow built in variables that can be used in your tasks')
+	println('  options|configs:\tShow config file/options decorator details')
 }
 
 fn print_options() {
@@ -222,8 +242,10 @@ fn print_options() {
 	println('  -s | --shell [shell_path]:\tRun the .mog file commands with a different shell. Default is /bin/bash')
 	println('  --home:\t\t\tRun the .mog file that is in your home directory. Ignores -p option')
 	println('  -p [path]:\t\t\tRun a .mog file from another location')
+	println('  --config-path [path]:\t\tRun with a config file from another location')
 	println('')
 	println("  --no-cd:\t\t\tDon't change cwd when running a mog file from another directory with '-p'")
+	println('  --init-config:\t\tCreate a config file with the default values at ~/.config/mog/config')
 	println('  --symlink:\t\t\tCreate a symlink for the mog command to ~/.local/bin')
 	println('')
 	println('  -l | --list:\t\t\tList available tasks')
@@ -257,6 +279,34 @@ fn print_builtin_vars_help() {
 		}
 		println('- ${key} = "${val}"')
 	}
+}
+
+fn print_config_help() {
+	println('These options are available either via the options decorator or in the mog config file')
+	println('The config file lives at ~/.config/mog/config and contains the following default data')
+	println('')
+	println('```')
+	println('shell_path=/bin/bash          # the shell you would like your tasks executed by')
+	println('source_file=                  # if you would like to source an external file to reference functions, env vars, etc. in your tasks')
+	println("no_cd=false                   # Don't change cwd when running a mog file from another directory with '-p'")
+	println('exit_on_error=false           # Sets the `e` shell flag via `set -e` at the begining of task')
+	println('error_on_undefined_vars=false # Sets the `u` shell flag via `set -u` at the begining of task')
+	println('exit_on_pipe_failures=false   # Sets the `o pipefail` shell flag via `set -o pipefail` at the begining of task')
+	println('print_commands=false          # Sets the `x` shell flag via `set -x` at the begining of task')
+	println('```')
+	println('')
+	println('You can override the global configs by using the options decorator on an given task')
+	println('\nExample:\n')
+	println('```')
+	println('@options(')
+	println('    shell_path=/bin/zsh')
+	println('    exit_on_error=true')
+	println(')')
+	println('my_task:')
+	println('    echo $0 # should output /bin/zsh')
+	println('    ls this_path_does_not_exist # should exit here instead of continuing')
+	println('    echo done')
+	println('```')
 }
 
 fn ljust(str string, len int, fill string) string {

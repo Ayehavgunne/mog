@@ -12,8 +12,8 @@ pub mut:
 	no_cd                   bool
 	exit_on_error           bool
 	error_on_undefined_vars bool
-	print_commands          bool
 	exit_on_pipe_failures   bool
+	print_commands          bool
 }
 
 pub struct Task {
@@ -59,25 +59,31 @@ pub fn (mut m Mog) execute_task(task_name string, verbose bool, prepend string) 
 	mut body := interpolate(m, task_name)
 	mut source := ''
 	config := m.get_config_from_task(task_name)
+	mut relax_flags := 'set +euo pipefail\n'
+
 	if config.source_file.len > 0 {
 		source = '. ${config.source_file}\n'
 	}
-	if config.no_cd {
-		body = '${source}${body}'
-	} else {
-		body = '${prepend}${source}${body}'
+	if source.len == 0 {
+		relax_flags = ''
 	}
-	body = '${add_option_flags(config)}\n${body}'
+
+	if config.no_cd {
+		body = '${relax_flags}${source}${add_option_flags(config)}\n${body}'
+	} else {
+		body = '${prepend}${relax_flags}${source}${add_option_flags(config)}\n${body}'
+	}
+
 	body = "${config.shell_path} -c '${body}'"
+
 	if verbose {
+		println('Configs: ${config}\n')
 		println('Executing the following commands:\n')
 		println(body)
 		println('${built_in_vars['\$normal']}\n---\n')
 	}
+
 	exit_code := os.system(body)
-	if exit_code == 2 {
-		eprint('\nBODY:\n${body}\n')
-	}
 	println('${built_in_vars['\$normal']}\nExit Code: ${exit_code}')
 	exit(exit_code)
 }
@@ -101,7 +107,9 @@ fn add_option_flags(config Config) string {
 
 @[params]
 pub struct ParseConfigOptions {
-	contents string
+pub:
+	contents    string
+	config_path string = config_file_path
 mut:
 	config Config
 }
@@ -109,15 +117,18 @@ mut:
 pub fn parse_config(p ParseConfigOptions) !Config {
 	mut file_contents := ''
 	if p.contents.len == 0 {
-		file_contents = os.read_file(config_file_path) or {
-			''
-		}
+		file_contents = os.read_file(p.config_path) or { '' }
 	} else {
 		file_contents = p.contents
 	}
 	mut config := Config{
-		shell_path:  p.config.shell_path
-		source_file: p.config.source_file
+		shell_path:              p.config.shell_path
+		source_file:             p.config.source_file
+		no_cd:                   p.config.no_cd
+		exit_on_error:           p.config.exit_on_error
+		error_on_undefined_vars: p.config.error_on_undefined_vars
+		print_commands:          p.config.print_commands
+		exit_on_pipe_failures:   p.config.exit_on_pipe_failures
 	}
 	for line in file_contents.split_into_lines() {
 		mut parts := line.split('=')

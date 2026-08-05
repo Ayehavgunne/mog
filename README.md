@@ -8,11 +8,12 @@ Define your tasks in a `.mog` file and run them with the `mog` command. Indentat
 ## Features
 
 - variables (just strings)
-- shell eval with `[]`
+- shell eval with `[]` for setting variables
 - interpolation of variables using `{}` (unless the `{` has a `$` in front, in which case it is left alone for the shell to interpret)
 - escape the `[` and `{` characters with `\`
 - additional cli arguments are passed to the task being ran
 - task descriptions with `@desc()` decorator
+- task options with `@options()` decorator
 - single line comments with `#`
 - importing other `.mog` files and using the tasks or variables with dot syntax
 - call another task in the middle of a task
@@ -51,6 +52,7 @@ default:
 run:
 	echo ${EDITOR} # task body is plain shell scripting
 	{py} my_script.py # with mog string interpolation on top
+    {my_alias.some_task} arg1 arg2 "quoted arg" # reference imported tasks and even pass different arguments to them
 
 @desc(for testing)
 test:
@@ -67,6 +69,32 @@ test:
 ...
 ```
 
+## Options/Config
+
+An optional config file lives at ~/.config/mog/config and it will apply globaly to all tasks run by the current user. To set up a config file just run `mog --init-config` and one will be created in the correct spot with all the default values. The contents of the config file are key value pairs delimeted by `=`. Use the command line flag `--config-path [your_path]` to provide a config file from another location.
+
+```
+shell_path=/bin/bash          # the shell you would like your tasks executed by
+source_file=                  # if you would like to source an external file to reference functions, env vars, etc. in your tasks
+no_cd=false                   # Don't change cwd when running a mog file from another directory with '-p'
+exit_on_error=false           # Sets the `e` shell flag via `set -e` at the begining of task
+error_on_undefined_vars=false # Sets the `u` shell flag via `set -u` at the begining of task
+exit_on_pipe_failures=false   # Sets the `o pipefail` shell flag via `set -o pipefail` at the begining of task
+print_commands=false          # Sets the `x` shell flag via `set -x` at the begining of task
+```
+
+Any of these options can be overridden per task by using the `options` decorator.
+
+```
+@options(
+    shell_path=/bin/zsh
+    exit_on_error=true
+)
+my_task:
+    echo $0 # should output /bin/zsh
+    ls this_path_does_not_exist # should exit here instead of continuing
+    echo done
+```
 
 ## Examples
 
@@ -75,9 +103,10 @@ See this projects various .mog files
 
 ## Help
 
-Just run `mog -h` or `mog --help` or `mog help`
+Just run `mog -h|--help`
 
 
 ## TODO
 
 - test on Windows?
+- add built in `if` statements that will be easier than bash's
