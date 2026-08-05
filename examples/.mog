@@ -49,3 +49,39 @@ test:
 # a task named 'default' will be called if mog is called without a specific task name
 default:
     {test}
+
+test_ifs:
+	echo yarp
+	@if {$@} == {myvar} (
+		echo stuff
+		pwd
+		ls
+	) @elif {$@} == other (
+		echo doing other
+	) @elif {$@} > 4 (
+		echo greater than 4
+	) @elif {$@} == thing (
+		echo doing thing
+	) @elif empty ./tests (  # `empty` works on both files and directory paths
+		echo tests is empty
+	) @else (
+		echo not matching
+	)
+	echo done
+
+test_if_dollar_curly_bracket:
+	@if ${SHELL} == /bin/zsh (
+		echo using zsh
+		echo $(uname -s)
+	)
+
+test_if_dollar_parenthesis:
+	@if $(uname -m) == arm64 (
+		echo using arm
+	)
+
+test_if_replacement:
+	echo {name}
+	@if {name} == darwin (
+		echo using MacOS
+	)

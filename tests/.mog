@@ -5,7 +5,7 @@ import (
 myvar = hi
 v_path = [which v]
 something = {v_path}/place
-
+name = [uname -s | tr "[:upper:]" "[:lower:]"]
 
 test:
 	pwd
@@ -60,3 +60,41 @@ test6:
 		echo "- $arg"
 	done
 	pwd
+
+test7:
+	echo yarp
+	@if {$@} == {myvar} (
+		echo stuff
+		pwd
+		ls
+	) @elif {$@} == other (
+		echo doing other
+	) @elif {$@} > 4 (
+		echo greater than 4
+	) @elif {$@} == thing (
+		echo doing thing
+	) @elif empty ./tests (
+		echo tests is empty
+	) @else (
+		echo not matching
+	)
+	echo done
+
+test8:
+	@if ${SHELL} == /bin/dsh (
+		echo using dsh
+		echo $(uname -s)
+	) @elif ${SHELL} == /bin/zsh (
+		echo using zsh
+	)
+
+test9:
+	@if $(uname -m) == arm64 (
+		echo using arm
+	)
+
+test10:
+	echo {name}
+	@if {name} == darwin (
+		echo using MacOS
+	)
