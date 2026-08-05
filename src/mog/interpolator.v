@@ -6,6 +6,14 @@ const open_replacement = '{'
 const close_replacement = '}'
 const open_eval = '['
 const close_eval = ']'
+const open_logic_block = '('
+const close_logic_block = ')'
+const control_flow_delimeter = '@'
+const if_statement = '${control_flow_delimeter}if'
+const elif_statement = '${control_flow_delimeter}elif'
+const else_statement = '${control_flow_delimeter}else'
+const bin_operators = ['==', '!=', '<', '<=', '>', '>=']
+const unary_operators = ['file_exists', 'dir_exists', 'empty', 'not_empty']
 const escape = '\\'
 const mog_var_char = '$'
 const import_namespace_delimiter = '.'
@@ -72,6 +80,26 @@ fn replace_mog_arg(replacement string, args []string) string {
 	return ''
 }
 
+fn remove_surrounding_quotes(input string) string {
+	mut a := input
+	if a.starts_with('"') {
+		a = a[1..]
+		if a.ends_with('"') {
+			a = a#[..-1]
+		}
+	} else if a.starts_with("'") {
+		a = a[1..]
+		if a.ends_with("'") {
+			a = a#[..-1]
+		}
+	}
+	return a
+}
+
+fn evaluate_dollar(replacie string) string {
+	return os.exec(['/bin/bash', '-c', 'echo ${replacie}']).output.trim_space()
+}
+
 struct Interpolator {
 mut:
 	mog            Mog
@@ -102,25 +130,22 @@ fn interpolate_var(m Mog, var string) string {
 
 fn interpolate(m Mog, task_name string) string {
 	task := m.get_task(task_name) or {
-		eprint("No task named '${task_name}' found")
+		eprint("No task named '${task_name}' found\n")
 		exit(1)
 	}
-	mut lines := []string{}
-	for line in task.body {
-		mut i := Interpolator{
-			mog:          m
-			task_name:    task_name
-			line:         line
-			pos:          0
-			current_char: line[0].ascii_str()
-		}
-		mut result := []string{}
-		for !i.eof {
-			result << i.eat()
-		}
-		lines << result.join('')
+	body := task.body.join('\n')
+	mut parts := []string{}
+	mut i := Interpolator{
+		mog:          m
+		task_name:    task_name
+		line:         body
+		pos:          0
+		current_char: body[0].ascii_str()
 	}
-	return lines.join('\n')
+	for !i.eof {
+		parts << i.eat()
+	}
+	return parts.join('')
 }
 
 fn (mut i Interpolator) end_of_file() {
@@ -155,21 +180,13 @@ fn (mut i Interpolator) peek(options PeekOptions) string {
 	return i.line[peek_pos].ascii_str()
 }
 
-fn (mut i Interpolator) eat_rest_of_line() string {
-	line := i.line[i.pos..]
-	for _ in line {
-		i.next_char()
-	}
-	i.end_of_file()
-	return line
-}
-
 fn (mut i Interpolator) eat_replacement() string {
 	i.next_char()
 	if i.current_char == mog_var_char {
 		return i.eat_arg()
 	}
-	word := i.eat_till_char([close_replacement], true)
+	word := i.eat_till_char(close_replacement)
+	i.next_char()
 	mut result := ''
 	if word.contains(import_namespace_delimiter)
 		&& word.split(import_namespace_delimiter).first() in i.mog.imports.keys() {
@@ -210,12 +227,14 @@ fn (mut i Interpolator) eat_replacement() string {
 
 fn (mut i Interpolator) eat_eval() string {
 	i.next_char()
-	eval := i.eat_till_char([close_eval], true)
+	eval := i.eat_till_char(close_eval)
+	i.next_char()
 	return os.execute("${i.mog.get_config_from_task(i.task_name).shell_path} -c '${eval}'").output.trim_space()
 }
 
 fn (mut i Interpolator) eat_arg() string {
-	mut word := i.eat_till_char([close_replacement], true)
+	mut word := i.eat_till_char(close_replacement)
+	i.next_char()
 	return replace_mog_arg(word, i.mog.args)
 }
 
@@ -228,7 +247,8 @@ fn (mut i Interpolator) eat_args() []string {
 		} else if i.current_char == ' ' {
 			i.next_char()
 		} else {
-			args << i.eat_till_char(['\n', ' ', '"', "'"], true)
+			args << i.eat_till_char('\n', ' ', '"', "'")
+			i.next_char()
 		}
 	}
 	return args
@@ -281,9 +301,9 @@ fn (mut i Interpolator) eat_string() string {
 	return word
 }
 
-fn (mut i Interpolator) eat_till_char(characters []string, advance bool) string {
+fn (mut i Interpolator) eat_till_char(characters ...string) string {
 	mut word := ''
-	for i.current_char !in characters && i.current_char != '' && i.current_char != '\n' && !i.eof {
+	for i.current_char !in characters && i.current_char != '' && !i.eof {
 		if i.current_char in quotes {
 			word += i.eat_string()
 			continue
@@ -291,21 +311,54 @@ fn (mut i Interpolator) eat_till_char(characters []string, advance bool) string 
 		word += i.current_char
 		i.next_char()
 	}
-	if i.current_char == '\n' && !i.eof {
-		i.end_of_file()
-	}
-	if advance {
+	return word
+}
+
+fn (mut i Interpolator) eat_and_replace_till_char(characters ...string) string {
+	mut word := ''
+	for i.current_char !in characters && i.current_char != '' && !i.eof {
+		if i.current_char in quotes {
+			word += i.eat_string()
+			continue
+		}
+
+		if i.current_char == escape {
+			if i.peek() in quotes {
+				word += i.leave_escape()
+			} else {
+				word += i.eat_escape()
+			}
+			continue
+		}
+
+		if i.current_char == '$' {
+			if i.peek() == '(' {
+				word += i.eat_till_char(')')
+			}
+		}
+
+		if i.current_char == open_replacement && !i.dollar_seen {
+			word += i.eat_replacement()
+			continue
+		}
+
+		word += i.current_char
 		i.next_char()
 	}
 	return word
 }
 
 fn (mut i Interpolator) eat_word() string {
-	mut chars := [open_replacement, escape]
+	mut chars := [open_replacement, escape, control_flow_delimeter]
 	if i.is_var {
 		chars << open_eval
 	}
-	return i.eat_till_char(chars, false)
+	return i.eat_till_char(...chars)
+}
+
+fn (mut i Interpolator) eat_newline() string {
+	i.next_char()
+	return '\n'
 }
 
 fn (mut i Interpolator) eat_escape() string {
@@ -323,22 +376,271 @@ fn (mut i Interpolator) leave_escape() string {
 	return ch
 }
 
+fn (mut i Interpolator) eat_control_flow() string {
+	mut lines := ''
+	keyword := i.eat_till_char(' ')
+	i.next_char()
+	if keyword == if_statement {
+		lines = i.eat_if_blocks()
+	}
+	i.next_char()
+	return lines
+}
+
+interface Operation {
+	block string
+	evaluate() bool
+}
+
+enum UnaryOperator {
+	file_exists
+	dir_exists
+	empty
+	not_empty
+}
+
+struct UnaryOperation {
+	operator UnaryOperator
+	value    string
+	block    string
+}
+
+fn (u UnaryOperation) evaluate() bool {
+	match u.operator {
+		.file_exists {
+			return os.is_file(u.value)
+		}
+		.dir_exists {
+			return os.is_dir(u.value)
+		}
+		.empty {
+			if os.is_file(u.value) {
+				return os.system('test -s ${u.value}') != 0
+			} else if os.is_dir(u.value) {
+				return os.is_dir_empty(u.value)
+			} else {
+				eprint("Syntax error. Path not recognised: '${u.value}'\n")
+				exit(2)
+			}
+		}
+		.not_empty {
+			if os.is_file(u.value) {
+				return os.system('test -s ${u.value}') == 0
+			} else if os.is_dir(u.value) {
+				return !os.is_dir_empty(u.value)
+			} else {
+				eprint("Syntax error. Path not recognised: '${u.value}'\n")
+				exit(2)
+			}
+		}
+	}
+}
+
+enum BinaryOperator {
+	eq
+	neq
+	lt
+	lte
+	gt
+	gte
+}
+
+struct BinaryOperation {
+	left     string
+	right    string
+	operator BinaryOperator = .eq
+	block    string
+}
+
+fn (b BinaryOperation) evaluate() bool {
+	match b.operator {
+		.eq {
+			if b.left.is_int() && b.right.is_int() {
+				return b.left.int() == b.right.int()
+			}
+			return b.left == b.right
+		}
+		.neq {
+			if b.left.is_int() && b.right.is_int() {
+				return b.left.int() != b.right.int()
+			}
+			return b.left != b.right
+		}
+		.lt {
+			if b.left.is_int() && b.right.is_int() {
+				return b.left.int() < b.right.int()
+			}
+			return b.left < b.right
+		}
+		.lte {
+			if b.left.is_int() && b.right.is_int() {
+				return b.left.int() <= b.right.int()
+			}
+			return b.left <= b.right
+		}
+		.gt {
+			if b.left.is_int() && b.right.is_int() {
+				return b.left.int() > b.right.int()
+			}
+			return b.left > b.right
+		}
+		.gte {
+			if b.left.is_int() && b.right.is_int() {
+				return b.left.int() >= b.right.int()
+			}
+			return b.left >= b.right
+		}
+	}
+}
+
+fn (mut i Interpolator) eat_if_condition() Operation {
+	i.skip_whitespace()
+	mut a := remove_surrounding_quotes(i.eat_and_replace_till_char('=', ' ').trim_space())
+	if a.starts_with('$') {
+		a = evaluate_dollar(a)
+	}
+	i.skip_whitespace()
+	if a in unary_operators {
+		return i.eat_un_op(a)
+	}
+	return i.eat_bin_op(a)
+}
+
+fn (mut i Interpolator) eat_bin_op(a string) BinaryOperation {
+	op := i.eat_bin_op_char()
+	i.next_char()
+	mut b := remove_surrounding_quotes(i.eat_and_replace_till_char(open_logic_block).trim_space())
+	if b.starts_with('$') {
+		b = evaluate_dollar(b)
+	}
+	i.next_char()
+	if i.current_char != '\n' {
+		eprint('Syntax error. Expected newline\n')
+		exit(2)
+	}
+	return BinaryOperation{a, b, op, i.eat_and_replace_till_char(close_logic_block)}
+}
+
+fn (mut i Interpolator) eat_bin_op_char() BinaryOperator {
+	op := i.eat_till_char(' ').trim_space()
+	if op == '==' {
+		return .eq
+	}
+	if op == '!=' {
+		return .neq
+	}
+	if op == '>' {
+		return .gt
+	}
+	if op == '>=' {
+		return .gte
+	}
+	if op == '<' {
+		return .lt
+	}
+	if op == '<=' {
+		return .lte
+	}
+	return .eq
+}
+
+fn (mut i Interpolator) eat_un_op(op_str string) UnaryOperation {
+	op := str_to_un_op(op_str)
+	i.skip_whitespace()
+	b := remove_surrounding_quotes(i.eat_and_replace_till_char(open_logic_block).trim_space())
+	i.next_char()
+	if i.current_char != '\n' {
+		eprint('Syntax error. Expected newline\n')
+		exit(2)
+	}
+	return UnaryOperation{op, b, i.eat_and_replace_till_char(close_logic_block)}
+}
+
+fn str_to_un_op(op string) UnaryOperator {
+	if op == 'file_exists' {
+		return .file_exists
+	}
+	if op == 'dir_exists' {
+		return .dir_exists
+	}
+	if op == 'empty' {
+		return .empty
+	}
+	if op == 'not_empty' {
+		return .not_empty
+	}
+	return .not_empty
+}
+
+fn (mut i Interpolator) eat_if_blocks() string {
+	if_comparison := i.eat_if_condition()
+	i.next_char()
+	i.next_char()
+
+	mut elif_comparisons := []Operation{}
+	mut else_block := ''
+	mut else_keyword := i.eat_till_char(' ').trim_space()
+
+	i.next_char()
+	for else_keyword == elif_statement {
+		elif_comparisons << i.eat_if_condition()
+		i.next_char()
+		i.next_char()
+		else_keyword = i.eat_till_char(' ').trim_space()
+	}
+
+	if else_keyword == else_statement {
+		i.next_char()
+		i.next_char()
+		else_block = i.eat_and_replace_till_char(close_logic_block)
+	} else {
+		else_block = "${else_keyword} "
+	}
+
+	if if_comparison.evaluate() {
+		return if_comparison.block
+	}
+
+	for comp in elif_comparisons {
+		if comp.evaluate() {
+			return comp.block
+		}
+	}
+
+	return else_block
+}
+
+fn (mut i Interpolator) skip_whitespace() {
+	for i.current_char == ' ' {
+		i.next_char()
+	}
+}
+
 fn (mut i Interpolator) eat() string {
 	if i.current_char == escape {
 		return i.eat_escape()
 	}
 
-	if i.current_char == '' || i.current_char == '\n' {
+	if i.current_char == '' {
 		i.end_of_file()
 		return ''
 	}
 
+	if i.current_char == '\n' {
+		return i.eat_newline()
+	}
+
 	if i.dollar_replace {
 		mut word := '{'
-		word += i.eat_till_char([close_replacement], true)
+		word += i.eat_till_char(close_replacement)
+		i.next_char()
 		word += '}'
 		i.dollar_replace = false
 		return word
+	}
+
+	if i.current_char == control_flow_delimeter {
+		return i.eat_control_flow()
 	}
 
 	if i.current_char == open_replacement && !i.dollar_seen {

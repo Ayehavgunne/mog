@@ -15,6 +15,7 @@ Define your tasks in a `.mog` file and run them with the `mog` command. Indentat
 - task descriptions with `@desc()` decorator
 - task options with `@options()` decorator
 - single line comments with `#`
+- mog specific `if` statements to avoid having to use bash's confusing syntax
 - importing other `.mog` files and using the tasks or variables with dot syntax
 - call another task in the middle of a task
 
@@ -66,6 +67,14 @@ test:
 	echo {$"*"}
 	echo {$#}
 
+test_ifs:
+	@if $(uname -s | tr "[:upper:]" "[:lower:]") == darwin (
+		echo using MacOS
+	) @elif $(uname -s | tr "[:upper:]" "[:lower:]") == linux (
+		echo using Linux
+	) else (
+        echo using something else
+    )
 ...
 ```
 
