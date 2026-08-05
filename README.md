@@ -71,7 +71,7 @@ test:
 
 ## Options/Config
 
-An optional config file lives at ~/.config/mog/config and it will apply globaly to all tasks run by the current user. To set up a config file just run `mog --init-config` and one will be created in the correct spot with all the default values. The contents of the config file are key value pairs delimeted by `=`. Use the command line flag `--config-path [your_path]` to provide a config file from another location.
+An optional config file lives at `~/.config/mog/config` and it will apply globaly to all tasks run by the current user. To set up a config file just run `mog --init-config` and one will be created in the correct spot with all the default values. The contents of the config file are key value pairs delimeted by `=`. Use the command line flag `--config-path [your_path]` to provide a config file from another location.
 
 ```
 shell_path=/bin/bash          # the shell you would like your tasks executed by
