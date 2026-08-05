@@ -25,7 +25,7 @@ Define your tasks in a `.mog` file and run them with the `mog` command. Indentat
 curl -fsSL https://raw.githubusercontent.com/ayehavgunne/mog/main/get_mog.sh | bash
 ```
 
-Then add it to your path or run `mog symlink` to automatically create a symbolic link from it's current location to `~/.local/bin/mog`
+Then add it to your path or run `mog --symlink` to automatically create a symbolic link from it's current location to `~/.local/bin/mog`
 
 
 ## What does it look like?
