@@ -57,16 +57,16 @@ fn do_import(import_paths map[string]string, args []string, config Config) map[s
 		for alias, path in import_paths {
 			new_path := os.abs_path(os.getwd() + '/' + path)
 			if !os.exists(new_path) {
-				eprint('Path not found: ${new_path}')
+				eprint('Path not found: ${new_path}\n')
 				exit(1)
 			}
 			os.chdir(new_path) or { debug('Failed to change cwd') }
 			contents := os.read_file('.mog') or {
-				eprint('Failed to read import: ${os.getwd()}/.mog')
+				eprint('Failed to read import: ${os.getwd()}/.mog\n')
 				exit(1)
 			}
 			imported_mogs[alias] = parse(contents, args, config) or {
-				eprint('Failed to parse import: ${os.getwd()}/.mog ${err}')
+				eprint('Failed to parse import: ${os.getwd()}/.mog ${err}\n')
 				exit(1)
 			}
 		}

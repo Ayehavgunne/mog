@@ -379,7 +379,7 @@ fn (mut l Lexer) get_next_token() ![]Token {
 			l.next_char()
 			return [l.make_token(.end_block, 'END_BLOCK')]
 		}
-		tokens << l.eat_command_body() or { return []Token{} }
+		tokens << l.eat_command_body() or { return [] }
 		return tokens
 	}
 
