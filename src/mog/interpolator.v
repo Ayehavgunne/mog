@@ -97,7 +97,7 @@ fn remove_surrounding_quotes(input string) string {
 }
 
 fn evaluate_dollar(replacie string) string {
-	return os.exec(['/bin/bash', '-c', 'echo ${replacie}']).output.trim_space()
+	return os.execute("/bin/bash -c 'echo ${replacie}'").output.trim_space()
 }
 
 struct Interpolator {
