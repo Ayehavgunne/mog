@@ -52,36 +52,41 @@ default:
 
 test_ifs:
 	echo yarp
-	@if {$@} == {myvar} (
+	@if {$@} == {myvar}
 		echo stuff
 		pwd
 		ls
-	) @elif {$@} == other (
+	@elif {$@} == other
 		echo doing other
-	) @elif {$@} > 4 (
-		echo greater than 4
-	) @elif {$@} == thing (
+	@elif {$@} == thing
 		echo doing thing
-	) @elif empty ./tests (  # `empty` works on both files and directory paths
+	@elif empty ./tests  # `empty` works on both files and directory paths
 		echo tests is empty
-	) @else (
+	@else
 		echo not matching
-	)
+	@fi
 	echo done
 
 test_if_dollar_curly_bracket:
-	@if ${SHELL} == /bin/zsh (
+	@if ${SHELL} == /bin/zsh
 		echo using zsh
 		echo $(uname -s)
-	)
+	@fi
 
 test_if_dollar_parenthesis:
-	@if $(uname -m) == arm64 (
+	@if $(uname -m) == arm64
 		echo using arm
-	)
+	@fi
 
 test_if_replacement:
 	echo {name}
-	@if {name} == darwin (
+	@if {name} == darwin
 		echo using MacOS
-	)
+	@fi
+
+test_num_comp:
+	@if {$@} > 4
+		echo greater than 4
+	@else
+		echo less than or equal to 4
+	@fi
