@@ -5,3 +5,4 @@ exit_on_error=false
 error_on_undefined_vars=true
 exit_on_pipe_failures=false
 print_commands=false
+hide_exit_code_output=false

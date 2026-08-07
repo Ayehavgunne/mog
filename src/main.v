@@ -6,7 +6,6 @@ import mog { Config, Mog, debug, parse, parse_config }
 
 const default_task = 'default'
 const value_arg_keys = ['-s', '--shell', '-p', '--config-path']
-const default_configs = 'shell_path=/bin/bash\nexit_on_error=false\nerror_on_undefined_vars=false\nexit_on_pipe_failures=false'
 
 fn main() {
 	cur_dir := os.getwd()
@@ -68,7 +67,8 @@ fn main() {
 	}
 
 	if '--init-config' in dash_args {
-		os.system("mkdir -p ${mog.config_path} && touch ${mog.config_file_path} && echo '${default_configs}' > ${mog.config_file_path}")
+		default_config := Config{}
+		os.system('/bin/bash -c \'mkdir -p ${mog.config_path} && touch ${mog.config_file_path} && echo -n "${default_config.defaults()}" > ${mog.config_file_path}\'')
 		exit(0)
 	}
 
@@ -124,13 +124,21 @@ fn main() {
 
 	if '-s' in value_args {
 		m.config.shell_path = value_args['-s']
-	}
-	if '--shell' in value_args {
+	} else if '--shell' in value_args {
 		m.config.shell_path = value_args['--shell']
 	}
 
+	mut no_exit_code := false
+	if '--no-exit-code' in dash_args {
+		no_exit_code = true
+	}
+
 	if '-l' in dash_args || '--list' in dash_args {
-		print_commands(m)
+		mut plain := false
+		if '--no-desc' in dash_args {
+			plain = true
+		}
+		print_commands(m, plain)
 		exit(0)
 	}
 
@@ -177,7 +185,7 @@ fn main() {
 	if mog_file_path != '.' && '--no-cd' !in dash_args {
 		prepend = 'cd ${mog_file_path}\n'
 	}
-	m.execute_task(task_name, verbose, prepend)
+	m.execute_task(task_name, verbose, prepend, no_exit_code)
 }
 
 fn print_version() {
@@ -185,13 +193,15 @@ fn print_version() {
 	println('${vm.name} ${vm.version}')
 }
 
-fn print_commands(m ?Mog) {
+fn print_commands(m ?Mog, plain bool) {
 	definite_m := m or { return }
-	println('Available tasks:')
-	sub_print_commands(definite_m, '')
+	if !plain {
+		println('Available tasks:')
+	}
+	sub_print_commands(definite_m, '', plain)
 }
 
-fn sub_print_commands(m Mog, mog_name string) {
+fn sub_print_commands(m Mog, mog_name string, plain bool) {
 	mut mut_mog_name := mog_name.clone()
 	if mog_name.len > 0 {
 		mut_mog_name += '.'
@@ -203,14 +213,16 @@ fn sub_print_commands(m Mog, mog_name string) {
 	len := longest(labels)
 	for name, task in m.tasks {
 		just_name := ljust('  ${mut_mog_name}${name}:', len, ' ')
-		if task.desc.len > 0 {
+		if plain {
+			println('${mut_mog_name}${name}')
+		} else if task.desc.len > 0 {
 			println('${just_name}\t${task.desc}')
 		} else {
 			println('${just_name}')
 		}
 	}
 	for import_mog_name, imported_mog in m.imports {
-		sub_print_commands(imported_mog, '${mut_mog_name}${import_mog_name}')
+		sub_print_commands(imported_mog, '${mut_mog_name}${import_mog_name}', plain)
 	}
 }
 
@@ -224,7 +236,7 @@ fn print_help(m ?Mog) {
 	println('')
 	if definite_mog := m {
 		if definite_mog.tasks.keys().len > 0 || definite_mog.imports.keys().len > 0 {
-			print_commands(m)
+			print_commands(m, false)
 		}
 	}
 }
@@ -249,6 +261,7 @@ fn print_options() {
 	println('  --symlink:\t\t\tCreate a symlink for the mog command to ~/.local/bin')
 	println('')
 	println('  -l | --list:\t\t\tList available tasks')
+	println('  --no-desc:\t\t\tWhen listing tasks with `-l|--list`, omits the descriptions and indentation')
 	println('  -h | --help:\t\t\tShow the help output')
 	println('  -V | --version:\t\tShow the version of mog')
 }

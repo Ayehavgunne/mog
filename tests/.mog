@@ -40,13 +40,9 @@ test3:
 test4:
 	echo {$bold}{v_path}{$normal_intensity}
 	{up.test}
-	sleep 2
 	echo {$dim}{$1}
-	echo Enter your name
-	read name
-	echo {$normal_intensity}hello ${name}
 	echo {$green}${EDITOR}
-	hogwash {$silence_out_err} || echo no hogwash
+	hogwash {$silence_out_err} || echo no hogwash{$normal}
 
 test5:
 	pwd
@@ -98,14 +94,14 @@ test10:
 	@fi
 
 test11:
-	@if {$@} > 4
+	@if {$1} > 4
 		echo greater than 4
 	@else
 		echo less than or equal to 4
 	@fi
 
 test12:
-	@if {$@} > 4 and {$@} < 8
+	@if {$@} > 4 #and {$@} < 8
 		echo greater than 4 and less than 8
 	@else
 		echo not within range
@@ -118,7 +114,7 @@ test13:
 			echo no shell path
 		fi
 		{up.test}
-	@elif {$1} == "dev"
+	@elif {$2} == "foo"
 		{up.test2} dev foo
 	@elif {$1} == ci
 		echo matched ci
@@ -126,3 +122,44 @@ test13:
 
 test14:
 	echo in test14
+
+test15:
+	@if {$1} == "check"
+		echo yes arg is check
+	@else
+		echo arg is not check
+	@fi
+
+@options(
+	exit_on_error=false
+)
+test16:
+	OUT=0
+	echo $OUT
+	OUT=$(echo $?)
+	# this will not work because the if statements are evaluated before the task
+	# itself is run so the variable $OUT is not available yet to compare against
+	@if $OUT == 0
+		echo command worked
+	@else
+		echo did not work
+	@fi
+	echo $OUT
+
+# @options(
+# 	shell_path=/opt/homebrew/bin/python3
+# 	source_file=
+# )
+# test17:
+# 	print("hello")
+
+# test18:
+# 	@if {$1} == "check"
+# 		@if {$2} == "good"
+# 			echo is good
+# 		@else
+# 			echo not good
+# 		@fi
+# 	@else
+# 		echo arg is not check
+# 	@fi

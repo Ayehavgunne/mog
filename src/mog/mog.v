@@ -14,6 +14,26 @@ pub mut:
 	error_on_undefined_vars bool
 	exit_on_pipe_failures   bool
 	print_commands          bool
+	hide_exit_code_output   bool
+}
+
+fn (c Config) to_str() string {
+	mut out := 'Config{\n'
+	$for field in Config.fields {
+		value := c.$(field.name)
+		out += '    ${field.name}=${value}\n'
+	}
+	out += '}'
+	return out
+}
+
+pub fn (c Config) defaults() string {
+	mut out := ''
+	$for field in Config.fields {
+		value := c.$(field.name)
+		out += '${field.name}=${value}\n'
+	}
+	return out
 }
 
 pub struct Task {
@@ -55,7 +75,7 @@ pub fn (m Mog) get_config_from_task(task_name string) Config {
 	return m.config
 }
 
-pub fn (mut m Mog) execute_task(task_name string, verbose bool, prepend string) {
+pub fn (mut m Mog) execute_task(task_name string, verbose bool, prepend string, no_exit_code bool) {
 	mut body := interpolate(m, task_name)
 	mut source := ''
 	config := m.get_config_from_task(task_name)
@@ -77,14 +97,16 @@ pub fn (mut m Mog) execute_task(task_name string, verbose bool, prepend string) 
 	body = "${config.shell_path} -c '${body}'"
 
 	if verbose {
-		println('Configs: ${config}\n')
+		println('${config.to_str()}\n')
 		println('Executing the following commands:\n')
 		println(body)
 		println('${built_in_vars['\$normal']}\n---\n')
 	}
 
 	exit_code := os.system(body)
-	println('${built_in_vars['\$normal']}\nExit Code: ${exit_code}')
+	if !config.hide_exit_code_output && !no_exit_code {
+		println('${built_in_vars['\$normal']}\nExit Code: ${exit_code}')
+	}
 	exit(exit_code)
 }
 
@@ -121,15 +143,7 @@ pub fn parse_config(p ParseConfigOptions) !Config {
 	} else {
 		file_contents = p.contents
 	}
-	mut config := Config{
-		shell_path:              p.config.shell_path
-		source_file:             p.config.source_file
-		no_cd:                   p.config.no_cd
-		exit_on_error:           p.config.exit_on_error
-		error_on_undefined_vars: p.config.error_on_undefined_vars
-		print_commands:          p.config.print_commands
-		exit_on_pipe_failures:   p.config.exit_on_pipe_failures
-	}
+	mut config_map := map[string]string{}
 	for line in file_contents.split_into_lines() {
 		mut parts := line.split('=')
 		if parts.len < 2 {
@@ -137,26 +151,19 @@ pub fn parse_config(p ParseConfigOptions) !Config {
 		}
 		key := parts[0].trim_space()
 		value := parts[1].trim_space()
-		if key == 'shell_path' {
-			config.shell_path = value
-		}
-		if key == 'source_file' {
-			config.source_file = value
-		}
-		if key == 'no_cd' {
-			config.no_cd = value == 'true'
-		}
-		if key == 'exit_on_error' {
-			config.exit_on_error = value == 'true'
-		}
-		if key == 'error_on_undefined_vars' {
-			config.error_on_undefined_vars = value == 'true'
-		}
-		if key == 'print_commands' {
-			config.print_commands = value == 'true'
-		}
-		if key == 'exit_on_pipe_failures' {
-			config.exit_on_pipe_failures = value == 'true'
+		config_map[key] = value
+	}
+	mut config := Config{}
+	$for field in Config.fields {
+		if field.name in config_map {
+			$if field.typ is bool {
+				config.$(field.name) = config_map[field.name] == 'true'
+			}
+			$if field.typ is string {
+				config.$(field.name) = config_map[field.name]
+			}
+		} else {
+			config.$(field.name) = p.config.$(field.name)
 		}
 	}
 	return config

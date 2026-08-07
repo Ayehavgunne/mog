@@ -208,23 +208,23 @@ fn (mut i Interpolator) eat_replacement() string {
 		if word_parts.last() in import_m.vars {
 			result = import_m.vars[word_parts.last()]
 		} else if word_parts.last() in import_m.tasks {
-            mut args := []string{}
+			mut args := []string{}
 			if i.current_char != '\n' {
 				args = i.eat_args()
-            }
+			}
 
-            if args.len > 0 {
-                import_m.args = args
-            } else {
-                import_m.args = i.mog.args
-            }
+			if args.len > 0 {
+				import_m.args = args
+			} else {
+				import_m.args = i.mog.args
+			}
 
-            if !i.mog.get_config_from_task(i.task_name).no_cd {
-                result = 'cd ${import_m.path}\n'
-            }
+			if !i.mog.get_config_from_task(i.task_name).no_cd {
+				result = 'cd ${import_m.path}\n'
+			}
 
-            result += interpolate(import_m, word_parts.last())
-            result += '\ncd - > /dev/null 2>&1\n'
+			result += interpolate(import_m, word_parts.last())
+			result += '\ncd - > /dev/null 2>&1\n'
 		}
 	} else {
 		if word in i.mog.vars {
@@ -264,7 +264,7 @@ fn (mut i Interpolator) eat_args() []string {
 			args << i.eat_string()
 		} else if i.current_char != ' ' {
 			args << i.eat_till_char('\n', ' ', '"', "'")
-            continue
+			continue
 		}
 		i.next_char()
 	}
@@ -567,7 +567,7 @@ fn (mut i Interpolator) eat_if_condition() Operation {
 	if a.starts_with('$') {
 		a = evaluate_dollar(a)
 	}
-    // println("A '${a}'")
+	// println("A '${a}'")
 	i.skip_whitespace()
 	if a in unary_operators {
 		return i.eat_un_op(a)
@@ -582,7 +582,7 @@ fn (mut i Interpolator) eat_bin_op(a string) BinaryOperation {
 	if b.starts_with('$') {
 		b = evaluate_dollar(b)
 	}
-    // println("B '${b}'")
+	// println("B '${b}'")
 	// next_word := i.peek_till('a', 'o')
 	// println("next_word '${next_word}'")
 	if i.current_char != '\n' {
@@ -642,6 +642,14 @@ fn str_to_un_op(op string) UnaryOperator {
 	return .not_empty
 }
 
+fn (mut i Interpolator) eat_fi() {
+	fi_keyword := i.eat_till_char('\n').trim_space()
+	if fi_keyword != close_if_statement {
+		eprint("Syntax error. Missing closing of if statement with '${close_if_statement}'\n")
+		exit(2)
+	}
+}
+
 fn (mut i Interpolator) eat_if_blocks() string {
 	if_comparison := i.eat_if_condition()
 
@@ -657,13 +665,10 @@ fn (mut i Interpolator) eat_if_blocks() string {
 
 	if else_keyword == else_statement {
 		else_block = i.eat_and_replace_till_char(control_flow_delimeter)
+		i.eat_fi()
 	} else if else_keyword != close_if_statement {
 		else_block = '${else_keyword} '
-        fi_keyword := i.eat_till_char('\n').trim_space()
-		if fi_keyword != close_if_statement {
-			eprint("Syntax error. Missing closing of if statement with '${close_if_statement}'\n")
-			exit(2)
-		}
+		i.eat_fi()
 	}
 
 	if if_comparison.evaluate() {

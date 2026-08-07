@@ -1,0 +1,5 @@
+[1m/usr/local/bin/v[22m
+in test in a_dir
+[2m5
+[32mmicro
+no hogwash[0m
