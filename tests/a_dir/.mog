@@ -5,3 +5,12 @@ test:
 
 test2:
     echo you said {$1} and {$2}
+    TYPE=-prod
+    if [[ "{$1}" == "" ]]; then
+		TYPE=-test
+	elif [[ "{$1}" == "dev" ]]; then
+		TYPE=-dev
+	elif [[ "{$1}" == "ci" ]]; then
+		TYPE=-ci
+	fi
+    echo build$TYPE

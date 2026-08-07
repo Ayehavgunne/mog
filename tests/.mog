@@ -63,38 +63,67 @@ test6:
 
 test7:
 	echo yarp
-	@if {$@} == {myvar} (
+	@if {$@} == {myvar}
 		echo stuff
 		pwd
 		ls
-	) @elif {$@} == other (
+	@elif {$@} == other
 		echo doing other
-	) @elif {$@} > 4 (
-		echo greater than 4
-	) @elif {$@} == thing (
+	@elif {$@} == thing
 		echo doing thing
-	) @elif empty ./tests (
+	@elif empty ./tests
 		echo tests is empty
-	) @else (
+	@else
 		echo not matching
-	)
+	@fi
 	echo done
 
 test8:
-	@if ${SHELL} == /bin/dsh (
+	@if ${SHELL} == /bin/dsh
 		echo using dsh
 		echo $(uname -s)
-	) @elif ${SHELL} == /bin/zsh (
+	@elif ${SHELL} == /bin/zsh
 		echo using zsh
-	)
+	@fi
 
 test9:
-	@if $(uname -m) == arm64 (
+	@if $(uname -m) == arm64
 		echo using arm
-	)
+	@fi
 
 test10:
 	echo {name}
-	@if {name} == darwin (
+	@if {name} == darwin
 		echo using MacOS
-	)
+	@fi
+
+test11:
+	@if {$@} > 4
+		echo greater than 4
+	@else
+		echo less than or equal to 4
+	@fi
+
+test12:
+	@if {$@} > 4 and {$@} < 8
+		echo greater than 4 and less than 8
+	@else
+		echo not within range
+	@fi
+
+test13:
+	if [[ "{$1}" == "" ]]; then
+		{test14}
+		if ! grep -q shell_path "../config"; then
+			echo no shell path
+		fi
+		echo poo
+		{up.test}
+	elif [[ "{$1}" == "dev" ]]; then
+		{up.test2} dev
+	elif [[ "{$1}" == "ci" ]]; then
+		echo matched ci
+	fi
+
+test14:
+	echo in test14

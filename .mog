@@ -40,11 +40,7 @@ amend:
 	if [[ {$#} -eq 0 ]]; then
 		git commit --amend --no-edit
 	else
-		output=()
-		for arg in {$"@"}; do
-			output+=( "-m $arg" )
-		done
-		git commit --amend "${output[@]}"
+		git commit --amend -m {$"*"}
 	fi
 	git push -f
 

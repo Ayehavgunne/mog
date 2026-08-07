@@ -68,13 +68,13 @@ test:
 	echo {$#}
 
 test_ifs:
-	@if $(uname -s | tr "[:upper:]" "[:lower:]") == darwin (
+	@if $(uname -s | tr "[:upper:]" "[:lower:]") == darwin
 		echo using MacOS
-	) @elif $(uname -s | tr "[:upper:]" "[:lower:]") == linux (
+	@elif $(uname -s | tr "[:upper:]" "[:lower:]") == linux
 		echo using Linux
-	) else (
+	@else
         echo using something else
-    )
+    @fi
 ...
 ```
 
@@ -118,4 +118,4 @@ Just run `mog -h|--help`
 ## TODO
 
 - test on Windows?
-- add built in `if` statements that will be easier than bash's
+- add boolean operators for `if` statements
