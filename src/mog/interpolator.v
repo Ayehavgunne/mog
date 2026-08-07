@@ -502,13 +502,13 @@ fn (b BinaryOperation) evaluate() bool {
 			if b.left.is_int() && b.right.is_int() {
 				return b.left.int() == b.right.int()
 			}
-			return b.left == b.right
+			return remove_surrounding_quotes(b.left) == remove_surrounding_quotes(b.right)
 		}
 		.neq {
 			if b.left.is_int() && b.right.is_int() {
 				return b.left.int() != b.right.int()
 			}
-			return b.left != b.right
+			return remove_surrounding_quotes(b.left) != remove_surrounding_quotes(b.right)
 		}
 		.lt {
 			if b.left.is_int() && b.right.is_int() {
@@ -520,7 +520,7 @@ fn (b BinaryOperation) evaluate() bool {
 				eprint("Syntax error. Type mismatch '${b.left}' and '${b.right}'\n")
 				exit(2)
 			}
-			return b.left < b.right
+			return remove_surrounding_quotes(b.left) < remove_surrounding_quotes(b.right)
 		}
 		.lte {
 			if b.left.is_int() && b.right.is_int() {
@@ -532,7 +532,7 @@ fn (b BinaryOperation) evaluate() bool {
 				eprint("Syntax error. Type mismatch '${b.left}' and '${b.right}'\n")
 				exit(2)
 			}
-			return b.left <= b.right
+			return remove_surrounding_quotes(b.left) <= remove_surrounding_quotes(b.right)
 		}
 		.gt {
 			if b.left.is_int() && b.right.is_int() {
@@ -544,7 +544,7 @@ fn (b BinaryOperation) evaluate() bool {
 				eprint("Syntax error. Type mismatch '${b.left}' and '${b.right}'\n")
 				exit(2)
 			}
-			return b.left > b.right
+			return remove_surrounding_quotes(b.left) > remove_surrounding_quotes(b.right)
 		}
 		.gte {
 			if b.left.is_int() && b.right.is_int() {
@@ -556,7 +556,7 @@ fn (b BinaryOperation) evaluate() bool {
 				eprint("Syntax error. Type mismatch '${b.left}' and '${b.right}'\n")
 				exit(2)
 			}
-			return b.left >= b.right
+			return remove_surrounding_quotes(b.left) >= remove_surrounding_quotes(b.right)
 		}
 	}
 }
@@ -567,6 +567,7 @@ fn (mut i Interpolator) eat_if_condition() Operation {
 	if a.starts_with('$') {
 		a = evaluate_dollar(a)
 	}
+    // println("A '${a}'")
 	i.skip_whitespace()
 	if a in unary_operators {
 		return i.eat_un_op(a)
@@ -581,6 +582,7 @@ fn (mut i Interpolator) eat_bin_op(a string) BinaryOperation {
 	if b.starts_with('$') {
 		b = evaluate_dollar(b)
 	}
+    // println("B '${b}'")
 	// next_word := i.peek_till('a', 'o')
 	// println("next_word '${next_word}'")
 	if i.current_char != '\n' {
@@ -655,15 +657,9 @@ fn (mut i Interpolator) eat_if_blocks() string {
 
 	if else_keyword == else_statement {
 		else_block = i.eat_and_replace_till_char(control_flow_delimeter)
-	} else if else_keyword == close_if_statement {
+	} else if else_keyword != close_if_statement {
 		else_block = '${else_keyword} '
-	} else {
-		eprint("Syntax error. Missing closing of if statement with '${close_if_statement}'\n")
-		exit(2)
-	}
-
-	if else_keyword != close_if_statement {
-		fi_keyword := i.eat_till_char('\n').trim_space()
+        fi_keyword := i.eat_till_char('\n').trim_space()
 		if fi_keyword != close_if_statement {
 			eprint("Syntax error. Missing closing of if statement with '${close_if_statement}'\n")
 			exit(2)
