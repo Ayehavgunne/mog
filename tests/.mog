@@ -112,18 +112,17 @@ test12:
 	@fi
 
 test13:
-	if [[ "{$1}" == "" ]]; then
+	@if {$1} == ""
 		{test14}
 		if ! grep -q shell_path "../config"; then
 			echo no shell path
 		fi
-		echo poo
 		{up.test}
-	elif [[ "{$1}" == "dev" ]]; then
-		{up.test2} dev
-	elif [[ "{$1}" == "ci" ]]; then
+	@elif {$1} == "dev"
+		{up.test2} dev foo
+	@elif {$1} == ci
 		echo matched ci
-	fi
+	@fi
 
 test14:
 	echo in test14
