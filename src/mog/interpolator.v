@@ -51,6 +51,13 @@ pub const built_in_vars = {
 	'\$silence_out_err':  ' > /dev/null 2>&1 '
 }
 
+@[if debug_interpolator ?]
+fn interpolator_debug(on bool, i Interpolator, s ...string) {
+	if on {
+		println('DEBUG: char(${i.current_char}) POS (${i.pos}) | ${s}'.replace('\n', '\\n'))
+	}
+}
+
 fn replace_mog_arg(replacement string, args []string) string {
 	for index, arg in args {
 		if replacement == '$${index + 1}' {
@@ -98,8 +105,8 @@ fn remove_surrounding_quotes(input string) string {
 	return a
 }
 
-fn evaluate_dollar(replacie string) string {
-	return os.execute("/bin/bash -c 'echo ${replacie}'").output.trim_space()
+fn evaluate_dollar(replacie string, shell Shell) string {
+	return os.execute("${shell.path} ${shell.interpreting_flag} 'echo ${replacie}'").output.trim_space()
 }
 
 struct Interpolator {
@@ -127,6 +134,7 @@ fn interpolate_var(m Mog, var string) string {
 	for !i.eof {
 		result << i.eat()
 	}
+	interpolator_debug(true, i, result.join(''), '988')
 	return result.join('')
 }
 
@@ -197,7 +205,7 @@ fn (mut i Interpolator) eat_replacement() string {
 	if i.current_char == mog_var_char {
 		return i.eat_arg()
 	}
-	word := i.eat_till_char(close_replacement)
+	word := i.eat_till(close_replacement)
 	i.next_char()
 	mut result := ''
 	if word.contains(import_namespace_delimiter)
@@ -219,12 +227,18 @@ fn (mut i Interpolator) eat_replacement() string {
 				import_m.args = i.mog.args
 			}
 
-			if !i.mog.get_config_from_task(i.task_name).no_cd {
+			config := i.mog.get_config_from_task(i.task_name)
+			no_cd := config.no_cd && !config.shell.supports_cd
+
+			if !no_cd {
 				result = 'cd ${import_m.path}\n'
 			}
 
 			result += interpolate(import_m, word_parts.last())
-			result += '\ncd - > /dev/null 2>&1\n'
+
+			if !no_cd {
+				result += '\ncd - > /dev/null 2>&1\n'
+			}
 		}
 	} else {
 		if word in i.mog.vars {
@@ -246,13 +260,16 @@ fn (mut i Interpolator) eat_replacement() string {
 
 fn (mut i Interpolator) eat_eval() string {
 	i.next_char()
-	eval := i.eat_till_char(close_eval)
+	interpolator_debug(true, i, '2')
+	eval := i.eat_till(close_eval)
 	i.next_char()
-	return os.execute("${i.mog.get_config_from_task(i.task_name).shell_path} -c '${eval}'").output.trim_space()
+	interpolator_debug(true, i, 'eval=${eval}', '3')
+	shell := i.mog.get_shell_from_task(i.task_name)
+	return os.execute("${shell.path} ${shell.interpreting_flag} '${eval}'").output.trim_space()
 }
 
 fn (mut i Interpolator) eat_arg() string {
-	mut word := i.eat_till_char(close_replacement)
+	mut word := i.eat_till(close_replacement)
 	i.next_char()
 	return replace_mog_arg(word, i.mog.args)
 }
@@ -263,7 +280,7 @@ fn (mut i Interpolator) eat_args() []string {
 		if i.current_char in quotes {
 			args << i.eat_string()
 		} else if i.current_char != ' ' {
-			args << i.eat_till_char('\n', ' ', '"', "'")
+			args << i.eat_and_replace_till('\n', ' ', '"', "'")
 			continue
 		}
 		i.next_char()
@@ -318,50 +335,123 @@ fn (mut i Interpolator) eat_string() string {
 	return word
 }
 
-fn (mut i Interpolator) eat_till_char(characters ...string) string {
-	mut word := ''
-	for i.current_char !in characters && i.current_char != '' && !i.eof {
+fn (mut i Interpolator) eat_till(end_words ...string) string {
+	mut words := ['']
+	interpolator_debug(true, i, 'end_words=(${end_words})', '431')
+	for i.current_char !in end_words && i.current_char != '' && !i.eof {
+		interpolator_debug(false, i, 'WORD=(${words.last()})', '432')
+		mut found_word := false
+		for end_word in end_words {
+			if words.last().contains(end_word) {
+				interpolator_debug(false, i, 'word contains end word', '433')
+				found_word = true
+				break
+			}
+		}
+		if found_word {
+			break
+		}
 		if i.current_char in quotes {
-			word += i.eat_string()
+			mut last_word := words.pop()
+			last_word += i.eat_string()
+			words << last_word
+			words << ''
+			interpolator_debug(true, i, 'WORD=(${last_word})', '434')
 			continue
 		}
-		word += i.current_char
+		mut last_word := words.pop()
+		last_word += i.current_char
+		words << last_word
 		i.next_char()
+		interpolator_debug(true, i, 'WORD=(${words.last()})', '435')
 	}
-	return word
+	interpolator_debug(true, i, 'WORDS=(${words.join('')})', '436')
+	return words.join('')
 }
 
-fn (mut i Interpolator) eat_and_replace_till_char(characters ...string) string {
+fn (mut i Interpolator) eat_and_replace_till(end_words ...string) string {
 	mut word := ''
-	for i.current_char !in characters && i.current_char != '' && !i.eof {
+	interpolator_debug(true, i, 'end_words=${end_words}', '41')
+	for i.current_char !in end_words && i.current_char != '' && !i.eof {
+		mut found_word := false
+		interpolator_debug(false, i, '${end_words}', '42')
+		for end_word in end_words {
+			if word.contains(end_word) {
+				found_word = true
+				end_word_len := end_word.len
+				word = word.substr(0, word.len - end_word_len)
+				i.pos = (i.pos - end_word_len) - 1
+				if i.eof {
+					i.eof = false
+				}
+				interpolator_debug(true, i, 'end_word=${end_word}', 'word=${word}', '43')
+				i.next_char()
+				break
+			}
+			interpolator_debug(false, i, 'end_words=${end_words}', 'word=${word}', '53')
+		}
+		if found_word {
+			break
+		}
+
+		if word == if_statement {
+			interpolator_debug(true, i, 'found if statement', '44')
+			word = i.eat_if_blocks()
+			interpolator_debug(true, i, word, '45')
+		}
+
 		if i.current_char in quotes {
 			word += i.eat_string()
+			interpolator_debug(true, i, 'word=${word}', '50')
 			continue
 		}
 
 		if i.current_char == escape {
 			if i.peek() in quotes {
 				word += i.leave_escape()
+				interpolator_debug(true, i, 'word=${word}', '51')
 			} else {
 				word += i.eat_escape()
+				interpolator_debug(true, i, 'word=${word}', '52')
 			}
 			continue
 		}
 
 		if i.current_char == '$' {
 			if i.peek() == '(' {
-				word += i.eat_till_char(')')
+				word += i.eat_till(')')
+				word += ')'
+				i.next_char()
+				interpolator_debug(true, i, 'word=${word}', '49')
 			}
 		}
 
 		if i.current_char == open_replacement && !i.dollar_seen {
 			word += i.eat_replacement()
+			interpolator_debug(true, i, 'word=${word}', '48')
 			continue
 		}
 
 		word += i.current_char
+		interpolator_debug(false, i, 'word=${word}', '47')
 		i.next_char()
 	}
+	for end_word in end_words {
+		if word.contains(end_word) {
+			end_word_len := end_word.len
+			word = word.substr(0, word.len - end_word_len)
+			i.pos = (i.pos - end_word_len) - 1
+			if i.eof {
+				i.eof = false
+			}
+			interpolator_debug(true, i, 'end_word=${end_word}', 'word=${word}', '55')
+			i.next_char()
+			i.next_char()
+			break
+		}
+		interpolator_debug(true, i, 'end_words=${end_words}', 'word=${word}', '54')
+	}
+	interpolator_debug(true, i, 'word=${word}', '46')
 	return word
 }
 
@@ -370,7 +460,7 @@ fn (mut i Interpolator) eat_word() string {
 	if i.is_var {
 		chars << open_eval
 	}
-	return i.eat_till_char(...chars)
+	return i.eat_till(...chars)
 }
 
 fn (mut i Interpolator) eat_newline() string {
@@ -395,7 +485,7 @@ fn (mut i Interpolator) leave_escape() string {
 
 fn (mut i Interpolator) eat_control_flow() string {
 	mut lines := ''
-	keyword := i.eat_till_char(' ')
+	keyword := i.eat_till(' ')
 	i.next_char()
 	if keyword == if_statement {
 		lines = i.eat_if_blocks()
@@ -563,11 +653,12 @@ fn (b BinaryOperation) evaluate() bool {
 
 fn (mut i Interpolator) eat_if_condition() Operation {
 	i.skip_whitespace()
-	mut a := i.eat_and_replace_till_char('=', ' ').trim_space()
+	mut a := i.eat_and_replace_till('=', ' ').trim_space()
 	if a.starts_with('$') {
-		a = evaluate_dollar(a)
+		interpolator_debug(true, i, 'A ${a}', '522')
+		a = evaluate_dollar(a, i.mog.get_shell_from_task(i.task_name))
 	}
-	// println("A '${a}'")
+	interpolator_debug(true, i, 'A ${a}', '523')
 	i.skip_whitespace()
 	if a in unary_operators {
 		return i.eat_un_op(a)
@@ -578,22 +669,28 @@ fn (mut i Interpolator) eat_if_condition() Operation {
 fn (mut i Interpolator) eat_bin_op(a string) BinaryOperation {
 	op := i.eat_bin_op_char()
 	i.next_char()
-	mut b := i.eat_and_replace_till_char('\n').trim_space()
+	mut b := i.eat_and_replace_till('\n').trim_space()
 	if b.starts_with('$') {
-		b = evaluate_dollar(b)
+		b = evaluate_dollar(b, i.mog.get_shell_from_task(i.task_name))
 	}
-	// println("B '${b}'")
+	interpolator_debug(true, i, "B '${b}'", '524')
 	// next_word := i.peek_till('a', 'o')
-	// println("next_word '${next_word}'")
+	// interpolator_debug(false, i, "next_word '${next_word}'", '526')
 	if i.current_char != '\n' {
+		interpolator_debug(true, i, a, b, '${op}', '525')
 		eprint('Syntax error. Expected newline\n')
 		exit(2)
 	}
-	return BinaryOperation{a, b, op, i.eat_and_replace_till_char(control_flow_delimeter)}
+	if i.current_char == '\n' {
+		i.next_char()
+	}
+	interpolator_debug(true, i, '111')
+	return BinaryOperation{a, b, op, i.eat_and_replace_till(elif_statement, else_statement,
+		close_if_statement)}
 }
 
 fn (mut i Interpolator) eat_bin_op_char() BinaryOperator {
-	op := i.eat_till_char(' ').trim_space()
+	op := i.eat_till(' ').trim_space()
 	if op == '==' {
 		return .eq
 	}
@@ -618,12 +715,17 @@ fn (mut i Interpolator) eat_bin_op_char() BinaryOperator {
 fn (mut i Interpolator) eat_un_op(op_str string) UnaryOperation {
 	op := str_to_un_op(op_str)
 	i.skip_whitespace()
-	b := i.eat_and_replace_till_char('\n').trim_space()
+	b := i.eat_and_replace_till('\n').trim_space()
 	if i.current_char != '\n' {
 		eprint('Syntax error. Expected newline\n')
 		exit(2)
 	}
-	return UnaryOperation{op, b, i.eat_and_replace_till_char(control_flow_delimeter)}
+	if i.current_char == '\n' {
+		i.next_char()
+	}
+	interpolator_debug(true, i, '112')
+	return UnaryOperation{op, b, i.eat_and_replace_till(elif_statement, else_statement,
+		close_if_statement)}
 }
 
 fn str_to_un_op(op string) UnaryOperator {
@@ -643,7 +745,8 @@ fn str_to_un_op(op string) UnaryOperator {
 }
 
 fn (mut i Interpolator) eat_fi() {
-	fi_keyword := i.eat_till_char('\n').trim_space()
+	fi_keyword := i.eat_till('\n').trim_space()
+	interpolator_debug(true, i, fi_keyword, '741')
 	if fi_keyword != close_if_statement {
 		eprint("Syntax error. Missing closing of if statement with '${close_if_statement}'\n")
 		exit(2)
@@ -651,22 +754,30 @@ fn (mut i Interpolator) eat_fi() {
 }
 
 fn (mut i Interpolator) eat_if_blocks() string {
+	interpolator_debug(true, i, '211')
 	if_comparison := i.eat_if_condition()
+	interpolator_debug(true, i, '${if_comparison}', '212')
 
 	mut elif_comparisons := []Operation{}
 	mut else_block := ''
-	mut else_keyword := i.eat_till_char(' ', '\n').trim_space()
+	interpolator_debug(true, i, '645')
+	mut else_keyword := i.eat_till(' ', '\n').trim_space()
+	interpolator_debug(true, i, else_keyword, '644')
 
 	i.next_char()
 	for else_keyword == elif_statement {
 		elif_comparisons << i.eat_if_condition()
-		else_keyword = i.eat_till_char(' ', '\n').trim_space()
+		interpolator_debug(true, i, 'eof=${i.eof}', '${i.line[i.pos..]}', '646')
+		else_keyword = i.eat_till(' ', '\n').trim_space()
+		interpolator_debug(true, i, '${elif_comparisons.last()}', '${else_keyword}', '647')
 	}
 
 	if else_keyword == else_statement {
-		else_block = i.eat_and_replace_till_char(control_flow_delimeter)
+		else_block = i.eat_and_replace_till(close_if_statement)
+		interpolator_debug(true, i, else_keyword, else_block, '642')
 		i.eat_fi()
 	} else if else_keyword != close_if_statement {
+		interpolator_debug(true, i, else_keyword, else_block, '643')
 		else_block = '${else_keyword} '
 		i.eat_fi()
 	}
@@ -706,7 +817,7 @@ fn (mut i Interpolator) eat() string {
 
 	if i.dollar_replace {
 		mut word := '{'
-		word += i.eat_till_char(close_replacement)
+		word += i.eat_till(close_replacement)
 		i.next_char()
 		word += '}'
 		i.dollar_replace = false
@@ -725,6 +836,7 @@ fn (mut i Interpolator) eat() string {
 	}
 
 	if i.current_char == open_eval && i.is_var {
+		interpolator_debug(true, i, '876')
 		return i.eat_eval()
 	}
 

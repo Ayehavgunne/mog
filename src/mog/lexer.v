@@ -3,6 +3,7 @@ module mog
 const comment = '#'
 const decorator = '@'
 const mog_import = 'import'
+const file_level_options = 'options'
 const command_delimeter = ':'
 const var_delimiter = '='
 const block_start = '('
@@ -10,14 +11,9 @@ const block_end = ')'
 const indent = '\t'
 const import_alias_delimiter = 'as'
 
-@[if trace_logs ?]
-pub fn debug(s string) {
-	println('DEBUG: ${s}')
-}
-
-@[if trace_logs ?]
-fn debug_cw(l Lexer) {
-	println('DEBUG: char(${l.current_char}) word(${l.word})')
+@[if debug_lexer ?]
+fn lexer_debug(l Lexer) {
+	println('DEBUG: char(${l.current_char}) word(${l.word})'.replace('\n', '\\n'))
 }
 
 enum TokenType {
@@ -30,6 +26,7 @@ enum TokenType {
 	decorator
 	new_line
 	mog_import
+	file_level_options
 	eof
 }
 
@@ -46,6 +43,7 @@ enum LexerContext {
 	command_block
 	decorator_block
 	import_block
+	options_block
 	var_declaration
 }
 
@@ -149,6 +147,17 @@ fn (mut l Lexer) eat_word() !Token {
 	if l.word == mog_import {
 		t := l.make_token(.keyword, l.reset_word())
 		l.context = .import_block
+		l.skip_whitespace()
+		if l.current_char != block_start {
+			return error('Missing opening bracket at line ${l.line} : col ${l.column}')
+		}
+		l.next_char()
+		l.eat_newline() or { return err }
+		return t
+	}
+	if l.word == file_level_options {
+		t := l.make_token(.keyword, l.reset_word())
+		l.context = .options_block
 		l.skip_whitespace()
 		if l.current_char != block_start {
 			return error('Missing opening bracket at line ${l.line} : col ${l.column}')
@@ -268,6 +277,40 @@ fn (mut l Lexer) eat_imports() ![]Token {
 	return tokens
 }
 
+fn (mut l Lexer) eat_options() ![]Token {
+	mut tokens := []Token{}
+	mut in_quote := false
+	l.skip_whitespace()
+	for l.current_char != block_end {
+		if l.current_char == '\n' {
+			if l.word.len > 0 {
+				tokens << l.make_token(.file_level_options, l.reset_word())
+			}
+			tokens << l.eat_newline()!
+			l.skip_whitespace()
+			if l.current_char == '"' && !in_quote {
+				in_quote = true
+				l.next_char()
+			}
+		} else {
+			l.word += l.current_char
+			l.next_char()
+		}
+		if l.current_char == comment {
+			l.skip_comment()
+		}
+		if l.current_char == '"' {
+			in_quote = false
+			l.next_char()
+		}
+		if l.eof {
+			break
+		}
+	}
+	l.context = .root
+	return tokens
+}
+
 fn (mut l Lexer) eat_value() Token {
 	mut stop_chars := ['\n', block_end, comment]
 	if l.context != .var_declaration {
@@ -352,6 +395,11 @@ fn (mut l Lexer) get_next_token() ![]Token {
 
 	if l.context == .import_block {
 		tokens := l.eat_imports()!
+		return tokens
+	}
+
+	if l.context == .options_block {
+		tokens := l.eat_options()!
 		return tokens
 	}
 

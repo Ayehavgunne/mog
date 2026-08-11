@@ -18,7 +18,7 @@ fn main() {
 		if result.exit_code == 0 {
 			println('Linked ${cur_dir}/${mog_file_name} to ${os.home_dir()}/.local/bin/mog')
 		} else {
-			println(result.output)
+			eprint('${result.output}\n')
 		}
 		exit(result.exit_code)
 	}
@@ -76,25 +76,25 @@ fn main() {
 	if '--home' in dash_args {
 		mog_file_path = os.home_dir()
 		os.chdir(mog_file_path) or {
-			println('Invalid path: ${mog_file_path}')
+			eprint('Invalid path: ${mog_file_path}\n')
 			exit(1)
 		}
 	} else if '-p' in value_args {
 		mog_file_path = value_args['-p']
 		mog_file_path = os.abs_path(cur_dir + '/' + mog_file_path)
 		if !os.exists(mog_file_path) {
-			println('Invalid path: ${mog_file_path}')
+			eprint('Invalid path: ${mog_file_path}\n')
 			exit(1)
 		}
 		os.chdir(mog_file_path) or {
-			println('Invalid path: ${mog_file_path}')
+			eprint('Invalid path: ${mog_file_path}\n')
 			exit(1)
 		}
 	}
 
 	mog_file := os.read_file('${mog_file_path}/.mog') or {
 		if args.len != 0 && 'help' !in args && '-h' !in dash_args && '--help' !in dash_args {
-			println('Failed to read file.')
+			eprint('Failed to read mog file\n')
 			exit(1)
 		}
 		''
@@ -116,16 +116,16 @@ fn main() {
 
 	if mog_file.len > 0 {
 		m = parse(mog_file, parse_args, config) or {
-			println('Failed to parse .mog file. ${err}')
+			eprint('Failed to parse .mog file. ${err}\n')
 			exit(1)
 		}
 		debug('${m}')
 	}
 
 	if '-s' in value_args {
-		m.config.shell_path = value_args['-s']
+		m.config.shell = mog.shell_map[value_args['-s']] or { mog.bash }
 	} else if '--shell' in value_args {
-		m.config.shell_path = value_args['--shell']
+		m.config.shell = mog.shell_map[value_args['--shell']] or { mog.bash }
 	}
 
 	mut no_exit_code := false
@@ -182,10 +182,11 @@ fn main() {
 
 	task_name := args.pop_left()
 	mut prepend := ''
-	if mog_file_path != '.' && '--no-cd' !in dash_args {
+	if mog_file_path != '.' && '--no-cd' !in dash_args
+		&& m.get_shell_from_task(task_name).supports_cd {
 		prepend = 'cd ${mog_file_path}\n'
 	}
-	m.execute_task(task_name, verbose, prepend, no_exit_code)
+	m.execute_task(task_name, verbose, prepend, no_exit_code, mog_file_path)
 }
 
 fn print_version() {
@@ -230,7 +231,9 @@ fn print_help(m ?Mog) {
 	println('Mog is a tool for running common cli tasks from a .mog file\n')
 	println('Usage:')
 	println('  mog [options] [task] [arg1] [arg2] ...\n')
-	print_options()
+	print_cli_options()
+	println('')
+	print_supported_shells()
 	println('')
 	print_list_help_topics()
 	println('')
@@ -241,6 +244,12 @@ fn print_help(m ?Mog) {
 	}
 }
 
+fn print_supported_shells() {
+	println('Shells that are supported the best are Bash and ZSH at the moment.')
+	println('Other shells can be used but without garauntee that it will support all features.')
+	println('Programming languages like Python should also work but will not support all features.')
+}
+
 fn print_list_help_topics() {
 	println('Help topics (run "mog (-h|--help) [topic]"):')
 	println('  arguments:\t\tShow information on using forwarded arguments from the cli to tasks')
@@ -248,10 +257,10 @@ fn print_list_help_topics() {
 	println('  options|configs:\tShow config file/options decorator details')
 }
 
-fn print_options() {
+fn print_cli_options() {
 	println('Options:')
 	println('  -v | --verbose:\t\tShow the commands that will be executed before running them')
-	println('  -s | --shell [shell_path]:\tRun the .mog file commands with a different shell. Default is /bin/bash')
+	println('  -s | --shell [shell]:\tRun the .mog file commands with a different shell. Default is bash. Can be the name of a common shell or a absolute path to your shell')
 	println('  --home:\t\t\tRun the .mog file that is in your home directory. Ignores -p option')
 	println('  -p [path]:\t\t\tRun a .mog file from another location')
 	println('  --config-path [path]:\t\tRun with a config file from another location')
@@ -270,7 +279,7 @@ fn print_arguments_help() {
 	println('Mog argument access:\n')
 	println('- Individual arguments are accessed using {$1} for the first argument, {$2} for the second, and so on')
 	println('- {$#} holds the total count of positional arguments')
-	println('- {$*} expands all positional parameters into a single string, separated by the a space')
+	println('- {$*} expands all positional parameters into a single string, separated by a space')
 	println('- {$"*"} becomes a single string, e.g., "arg1 arg2 arg3"')
 	println('- {$@} expands positional parameters as separate quoted strings')
 	println('- {$"@"} expands to "{$1}" "{$2}" "{$3}", treating each argument as a distinct entity')
@@ -295,24 +304,36 @@ fn print_builtin_vars_help() {
 }
 
 fn print_config_help() {
-	println('These options are available either via the options decorator or in the mog config file')
+	println('These options are available either via the options decorator, the options block or in the mog config file')
 	println('The config file lives at ~/.config/mog/config and contains the following default data')
 	println('')
 	println('```')
-	println('shell_path=/bin/bash          # the shell you would like your tasks executed by')
-	println('source_file=                  # if you would like to source an external file to reference functions, env vars, etc. in your tasks')
+	println('shell=bash                    # The shell you would like your tasks executed by')
+	println('source_file=                  # If you would like to source an external file to reference functions, env vars, etc. in your tasks')
+	println('env_files=.env, .env.local    # Comma seperated list. Provide any env files to load before executing a task. Leading and trailing whitespace is insignificant')
 	println("no_cd=false                   # Don't change cwd when running a mog file from another directory with '-p'")
-	println('exit_on_error=false           # Sets the `e` shell flag via `set -e` at the begining of task')
-	println('error_on_undefined_vars=false # Sets the `u` shell flag via `set -u` at the begining of task')
-	println('exit_on_pipe_failures=false   # Sets the `o pipefail` shell flag via `set -o pipefail` at the begining of task')
-	println('print_commands=false          # Sets the `x` shell flag via `set -x` at the begining of task')
+	println('exit_on_error=false           # Exit as soon as a command returns a non-zero status')
+	println('error_on_undefined_vars=false # Errors if the shell encounters an undefined variable')
+	println('exit_on_pipe_failures=false   # The return value of a pipeline is the value of the last command to exit with a non-zero status')
+	println('print_commands=false          # The shell will echo each command source before executing')
+	println('hide_exit_code_output=false   # Silences the extra mog outputs like the exit code')
+	println('new_shell_per_line=false      # Run each line in a task with a new shell instance')
 	println('```')
 	println('')
-	println('You can override the global configs by using the options decorator on an given task')
+	println('You can override the global configs per mog file by using the options block in said file')
+	println('\nExample:\n')
+	println('```')
+	println('options (')
+	println('    shell=zsh')
+	println('    exit_on_error=true')
+	println(')')
+	println('```')
+	println('')
+	println('You can override the global configs per task by using the options decorator on an given task')
 	println('\nExample:\n')
 	println('```')
 	println('@options(')
-	println('    shell_path=/bin/zsh')
+	println('    shell=zsh')
 	println('    exit_on_error=true')
 	println(')')
 	println('my_task:')

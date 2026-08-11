@@ -10,9 +10,9 @@ mog_test_args = -p=tests --no-exit-code
 default:
     {fmt}
 
-@desc(run mog with debug output)
-run_trace:
-	v -d trace_logs run {src}
+@desc(build mog with debug flags)
+debug:
+	mkdir -p release && v -d debug_{$1} -o release/mog {src}
 
 b:
 	{build}
@@ -62,7 +62,7 @@ release:
     @fi
 
 @options(
-    shell_path=/bin/bash
+    shell=/bin/bash
     source_file=
     hide_exit_code_output=true
     exit_on_error=false

@@ -1,13 +1,17 @@
-/Users/ant/code/mog/tests
 don't /usr/local/bin/v /bin/zsh stuff
 foo { bar
 apple
 /bin/zsh
-micro
+testing1
+testing2
+testing3
+testing4
+testing5
+testing6
 hi
 "{/usr/local/bin/v'
 /usr/local/bin/v/place
 yell 5 and foo
-you said shmoo and peep
+you said shmoo and foo
 build-prod
 yarp

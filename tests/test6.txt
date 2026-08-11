@@ -5,4 +5,3 @@ goob
 - foo
 - bar
 - baz
-/Users/ant/code/mog/tests

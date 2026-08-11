@@ -1,3 +1,9 @@
+options (
+	shell=/bin/bash
+	source_file=
+	env_files=../.env, .env.local
+)
+# commenting
 import (
     a_dir as up
 )
@@ -7,18 +13,26 @@ v_path = [which v]
 something = {v_path}/place
 name = [uname -s | tr "[:upper:]" "[:lower:]"]
 
+@options(
+	shell=zsh
+	source_file=~/.zshrc
+)
 test:
-	pwd
     echo "don't {v_path} ${SHELL} stuff"
 	echo 'foo \{ bar'
 	echo $ZSH_THEME
 	echo $0
-    echo ${EDITOR}
+    echo ${TESTING1}
+    echo ${TESTING2}
+    echo ${TESTING3}
+    echo ${TESTING4}
+    echo ${TESTING5}
+    echo ${TESTING6}
 	echo {myvar}
 	echo "\"\{{v_path}'"
 	echo {something}
 	echo yell {$1} and {$2}
-    {up.test2} shmoo peep
+    {up.test2} shmoo {$2}
     echo yarp
 
 test2:
@@ -27,13 +41,14 @@ test2:
 	else
 		echo a thing {$1}
 	fi
+	echo $0
 	echo done
 
 test3:
     echo wallaby {$1}
 
 @options(
-	shell_path=/bin/bash
+	shell=/bin/bash
 	source_file=
 )
 @desc(for testing)
@@ -45,7 +60,6 @@ test4:
 	hogwash {$silence_out_err} || echo no hogwash{$normal}
 
 test5:
-	pwd
 	echo test5
 
 test6:
@@ -55,14 +69,11 @@ test6:
 	for arg in {$"@"}; do
 		echo "- $arg"
 	done
-	pwd
 
 test7:
 	echo yarp
 	@if {$@} == {myvar}
 		echo stuff
-		pwd
-		ls
 	@elif {$@} == other
 		echo doing other
 	@elif {$@} == thing
@@ -80,6 +91,7 @@ test8:
 		echo $(uname -s)
 	@elif ${SHELL} == /bin/zsh
 		echo using zsh
+		echo $(uname -m)
 	@fi
 
 test9:
@@ -110,7 +122,7 @@ test12:
 test13:
 	@if {$1} == ""
 		{test14}
-		if ! grep -q shell_path "../config"; then
+		if ! grep -q shell "../config"; then
 			echo no shell path
 		fi
 		{up.test}
@@ -146,20 +158,33 @@ test16:
 	@fi
 	echo $OUT
 
-# @options(
-# 	shell_path=/opt/homebrew/bin/python3
-# 	source_file=
-# )
-# test17:
-# 	print("hello")
+@options(
+	shell=/opt/homebrew/bin/python3
+	source_file=
+)
+test17:
+	print("hello")
+	import this
 
-# test18:
-# 	@if {$1} == "check"
-# 		@if {$2} == "good"
-# 			echo is good
-# 		@else
-# 			echo not good
-# 		@fi
-# 	@else
-# 		echo arg is not check
-# 	@fi
+test18:
+	@if {$1} == 5
+		@if {$2} == foo
+			@if {$3} == bar
+				echo is bar
+			@else
+				echo not bar
+			@fi
+		@else
+			echo not foo
+		@fi
+	@else
+		echo arg is not 5
+	@fi
+
+@options(
+	new_shell_per_line=true
+)
+test19:
+	export F=foo
+	echo $F
+	export B=bar && echo $B

@@ -4,11 +4,17 @@ import os
 
 const original_dir = os.getwd()
 
+@[if debug_parser ?]
+fn parser_debug(p Parser, s string) {
+	println('DEBUG: token(${p.current_token}) | (${s})'.replace('\n', '\\n'))
+}
+
 enum ParserContext {
 	root
 	command_block
 	decorator_block
 	import_block
+	options_block
 	var_declaration
 }
 
@@ -47,7 +53,7 @@ pub fn parse(file string, args []string, config Config) !Mog {
 	for key, var in m.vars {
 		m.vars[key] = interpolate_var(m, var)
 	}
-	os.chdir(original_dir) or { debug('failed to ge back to original dir') }
+	os.chdir(original_dir) or { debug('failed to get back to original dir') }
 	return m
 }
 
@@ -115,7 +121,7 @@ fn (mut p Parser) process_next_token() ! {
 			'options' {
 				p.current_command.config = parse_config(
 					contents: values.join('\n')
-					config:   p.config
+					config:   p.current_command.config or { p.config }
 				) or { p.config }
 			}
 			else {
@@ -177,6 +183,23 @@ fn (mut p Parser) process_next_token() ! {
 				p.import_paths[alias] = path
 				p.move()
 			}
+		}
+		if p.current_token.value == file_level_options {
+			p.move()
+			mut values := []string{}
+			for p.current_token.token_type != .end_block {
+				if p.current_token.value.trim_space().len > 0 {
+					values << p.current_token.value.trim_space()
+				}
+				p.move()
+				if p.current_token.token_type == .new_line {
+					p.move()
+				}
+			}
+			p.current_command.config = parse_config(
+				contents: values.join('\n')
+				config:   p.config
+			) or { p.config }
 		}
 	}
 
