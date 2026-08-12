@@ -5,8 +5,10 @@ import os
 const original_dir = os.getwd()
 
 @[if debug_parser ?]
-fn parser_debug(p Parser, s string) {
-	println('DEBUG: token(${p.current_token}) | (${s})'.replace('\n', '\\n'))
+fn parser_debug(on bool, p Parser, s string) {
+	if on {
+		println('DEBUG: token(${p.current_token}) | (${s})'.replace('\n', '\\n'))
+	}
 }
 
 enum ParserContext {
@@ -32,7 +34,7 @@ mut:
 	eof             bool
 }
 
-pub fn parse(file string, args []string, config Config) !Mog {
+pub fn parse(file string, args []string, mog_file_path string, config Config) !Mog {
 	tokens := lex(file)!
 	mut p := Parser{
 		tokens:        tokens
@@ -45,34 +47,34 @@ pub fn parse(file string, args []string, config Config) !Mog {
 	mut m := Mog{
 		vars:    p.vars
 		tasks:   p.tasks
-		path:    os.getwd()
-		imports: do_import(p.import_paths, args, config)
+		path:    mog_file_path
+		imports: do_import(p.import_paths, args, mog_file_path, config)
 		args:    args
 		config:  config
 	}
 	for key, var in m.vars {
 		m.vars[key] = interpolate_var(m, var)
 	}
-	os.chdir(original_dir) or { debug('failed to get back to original dir') }
+	os.chdir(original_dir) or { debug(s: 'failed to get back to original dir') }
 	return m
 }
 
-fn do_import(import_paths map[string]string, args []string, config Config) map[string]Mog {
+fn do_import(import_paths map[string]string, args []string, mog_file_path string, config Config) map[string]Mog {
 	mut imported_mogs := map[string]Mog{}
 	if import_paths.len > 0 {
 		for alias, path in import_paths {
-			new_path := os.abs_path(os.getwd() + '/' + path)
+			new_path := os.abs_path(mog_file_path + '/' + path)
 			if !os.exists(new_path) {
 				eprint('Path not found: ${new_path}\n')
 				exit(1)
 			}
-			os.chdir(new_path) or { debug('Failed to change cwd') }
+			os.chdir(new_path) or { debug(s: 'Failed to change cwd') }
 			contents := os.read_file('.mog') or {
-				eprint('Failed to read import: ${os.getwd()}/.mog\n')
+				eprint('Failed to read import: ${new_path}/.mog\n')
 				exit(1)
 			}
-			imported_mogs[alias] = parse(contents, args, config) or {
-				eprint('Failed to parse import: ${os.getwd()}/.mog ${err}\n')
+			imported_mogs[alias] = parse(contents, args, new_path, config) or {
+				eprint('Failed to parse import: ${new_path}/.mog ${err}\n')
 				exit(1)
 			}
 		}
@@ -133,16 +135,28 @@ fn (mut p Parser) process_next_token() ! {
 	if p.current_token.token_type == .command_name {
 		command_name := p.current_token.value
 		p.move()
-		for p.current_token.token_type == .command_body {
+		mut body := ''
+		mut preserv_indentation := false
+		if config := p.current_command.config {
+			preserv_indentation = config.shell.preserv_indentation
+		}
+		for p.current_token.token_type in [.command_body, .indent] {
 			if p.eof {
 				break
 			}
-			p.current_command.body << p.current_token.value
+			if preserv_indentation && p.current_token.token_type == .indent {
+				body += p.current_token.value
+			} else if p.current_token.token_type == .command_body {
+				body += p.current_token.value
+			}
 			p.move()
 			if p.current_token.token_type == .new_line {
+				p.current_command.body << body
+				body = ''
 				p.move()
 			}
 		}
+		p.current_command.body << body
 		p.tasks[command_name] = p.current_command
 		p.current_command = Task{}
 		if p.current_token.token_type != .command_body {

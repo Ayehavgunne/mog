@@ -1,5 +1,5 @@
 options (
-	shell=/bin/bash
+	shell=zsh
 	source_file=
 	env_files=../.env, .env.local
 )
@@ -44,7 +44,11 @@ test2:
 	echo $0
 	echo done
 
+@options(
+	shell=sh
+)
 test3:
+	echo $0
     echo wallaby {$1}
 
 @options(
@@ -164,7 +168,11 @@ test16:
 )
 test17:
 	print("hello")
-	import this
+	a = "hello"
+	if a == "hello":
+		print('you said hello')
+		for b in range(10):
+			print(b)
 
 test18:
 	@if {$1} == 5
@@ -187,4 +195,25 @@ test18:
 test19:
 	export F=foo
 	echo $F
-	export B=bar && echo $B
+	export B=bar && \
+	echo $B
+
+@options(
+	print_commands=true
+	source_file=
+)
+test20:
+	echo 1
+	echo 2
+	echo 3
+
+@options(
+	shell=node
+	source_file=
+)
+test21:
+	console.log("hello")
+	let a = 2
+	if (a > 1) {
+		console.log('yes')
+	}
