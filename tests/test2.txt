@@ -1,0 +1,3 @@
+a thing 5
+/bin/zsh
+done

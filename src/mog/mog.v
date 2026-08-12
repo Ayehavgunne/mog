@@ -5,15 +5,9 @@ import os
 pub const config_path = os.expand_tilde_to_home('~/.config/mog')
 pub const config_file_path = '${config_path}/config'
 
-pub struct Config {
-pub mut:
-	shell_path              string = '/bin/bash'
-	source_file             string
-	no_cd                   bool
-	exit_on_error           bool
-	error_on_undefined_vars bool
-	exit_on_pipe_failures   bool
-	print_commands          bool
+@[if debug ?]
+pub fn debug(s string) {
+	println("DEBUG: '${s}'".replace('\n', '\\n'))
 }
 
 pub struct Task {
@@ -55,109 +49,87 @@ pub fn (m Mog) get_config_from_task(task_name string) Config {
 	return m.config
 }
 
-pub fn (mut m Mog) execute_task(task_name string, verbose bool, prepend string) {
+pub fn (m Mog) get_shell_from_task(task_name string) Shell {
+	if task := m.get_task(task_name) {
+		config := task.config or { m.config }
+		return config.shell
+	}
+	return m.config.shell
+}
+
+pub fn (mut m Mog) execute_task(task_name string, verbose bool, prepend string, no_exit_code bool, mog_file_path string) {
 	mut body := interpolate(m, task_name)
 	mut source := ''
 	config := m.get_config_from_task(task_name)
+
+	for env_file in config.env_files {
+		read_env_file('${mog_file_path}/${env_file}')
+	}
+
 	mut relax_flags := 'set +euo pipefail\n'
+	option_flags := add_option_flags(config)
 
 	if config.source_file.len > 0 {
 		source = '. ${config.source_file}\n'
 	}
-	if source.len == 0 {
+	if source.len == 0 || option_flags.len == 0 {
 		relax_flags = ''
 	}
 
 	if config.no_cd {
-		body = '${relax_flags}${source}${add_option_flags(config)}\n${body}'
+		body = '${relax_flags}${source}${option_flags}\n${body}'
 	} else {
-		body = '${prepend}${relax_flags}${source}${add_option_flags(config)}\n${body}'
+		body = '${prepend}${relax_flags}${source}${option_flags}\n${body}'
 	}
 
-	body = "${config.shell_path} -c '${body}'"
+	if !config.new_shell_per_line {
+		body = "${config.shell.path} ${config.shell.interpreting_flag} '${body}'"
+	}
 
 	if verbose {
-		println('Configs: ${config}\n')
+		println('${config.to_str()}\n')
 		println('Executing the following commands:\n')
 		println(body)
 		println('${built_in_vars['\$normal']}\n---\n')
 	}
 
-	exit_code := os.system(body)
-	println('${built_in_vars['\$normal']}\nExit Code: ${exit_code}')
+	mut exit_code := 0
+	if config.new_shell_per_line {
+		for line in body.split_into_lines() {
+			exit_code =
+				os.system("${config.shell.path} ${config.shell.interpreting_flag} '${line}'")
+			if config.exit_on_error && exit_code != 0 {
+				break
+			}
+		}
+	} else {
+		exit_code = os.system(body)
+	}
+
+	if !config.hide_exit_code_output && !no_exit_code {
+		println('${built_in_vars['\$normal']}\nExit Code: ${exit_code}')
+	}
+
 	exit(exit_code)
 }
 
 fn add_option_flags(config Config) string {
-	mut result := 'set -'
+	mut result := ''
 	if config.exit_on_error {
-		result += 'e'
+		result += config.shell.exit_on_error_flag
 	}
 	if config.error_on_undefined_vars {
-		result += 'u'
+		result += config.shell.error_on_undefined_vars_flag
 	}
 	if config.print_commands {
-		result += 'x'
+		result += config.shell.print_commands_flag
 	}
 	if config.exit_on_pipe_failures {
-		result += 'o pipefail'
+		result += config.shell.exit_on_pipe_failures_flag
 	}
-	return result
-}
-
-@[params]
-pub struct ParseConfigOptions {
-pub:
-	contents    string
-	config_path string = config_file_path
-mut:
-	config Config
-}
-
-pub fn parse_config(p ParseConfigOptions) !Config {
-	mut file_contents := ''
-	if p.contents.len == 0 {
-		file_contents = os.read_file(p.config_path) or { '' }
+	if result.len > 0 {
+		return 'set -${result}'
 	} else {
-		file_contents = p.contents
+		return ''
 	}
-	mut config := Config{
-		shell_path:              p.config.shell_path
-		source_file:             p.config.source_file
-		no_cd:                   p.config.no_cd
-		exit_on_error:           p.config.exit_on_error
-		error_on_undefined_vars: p.config.error_on_undefined_vars
-		print_commands:          p.config.print_commands
-		exit_on_pipe_failures:   p.config.exit_on_pipe_failures
-	}
-	for line in file_contents.split_into_lines() {
-		mut parts := line.split('=')
-		if parts.len < 2 {
-			parts << ''
-		}
-		key := parts[0].trim_space()
-		value := parts[1].trim_space()
-		if key == 'shell_path' {
-			config.shell_path = value
-		}
-		if key == 'source_file' {
-			config.source_file = value
-		}
-		if key == 'no_cd' {
-			config.no_cd = value == 'true'
-		}
-		if key == 'exit_on_error' {
-			config.exit_on_error = value == 'true'
-		}
-		if key == 'error_on_undefined_vars' {
-			config.error_on_undefined_vars = value == 'true'
-		}
-		if key == 'print_commands' {
-			config.print_commands = value == 'true'
-		}
-		if key == 'exit_on_pipe_failures' {
-			config.exit_on_pipe_failures = value == 'true'
-		}
-	}
-	return config
 }

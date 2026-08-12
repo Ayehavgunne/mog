@@ -4,13 +4,15 @@ version = [cat src/v.mod | grep version | cut -d ":" -f 2 | xargs]
 kernel = [uname -s | tr "[:upper:]" "[:lower:]"]
 arch = [uname -m | tr "[:upper:]" "[:lower:]" | sed -e 's/aarch64/arm64/g' -e 's/x86_64/amd64/g']
 upload_path = ./release/mog_{kernel}_{arch}
+test_args = 5 foo bar baz
+mog_test_args = -p=tests --no-exit-code
 
 default:
     {fmt}
 
-@desc(run mog with debug output)
-run_trace:
-	v -d trace_logs run {src}
+@desc(build mog with debug flags)
+debug:
+	mkdir -p release && v -d debug_{$1} -o release/mog {src}
 
 b:
 	{build}
@@ -37,11 +39,11 @@ c:
 
 amend:
 	git add -A
-	if [[ {$#} -eq 0 ]]; then
+	@if {$#} == 0
 		git commit --amend --no-edit
-	else
+	@else
 		git commit --amend -m {$"*"}
-	fi
+	@fi
 	git push -f
 
 a:
@@ -53,8 +55,33 @@ tag:
 
 release:
     cp ./release/mog {upload_path}
-    if [[ "{$1}" == "" ]]; then
+    @if {$1} == ""
         gh release create {version} {upload_path}
-    else
+    @else
         gh release upload --clobber {version} {upload_path}
+    @fi
+
+@options(
+    shell=/bin/bash
+    source_file=
+    hide_exit_code_output=true
+    exit_on_error=false
+)
+test:
+    @if {$1} != ""
+        {_compare_test_file}
+    @else
+        TESTS=( $(mog -p=tests -l --no-desc) )
+        for arg in "${TESTS[@]}"; do
+            {_compare_test_file} ${arg}
+        done
+    @fi
+
+_compare_test_file:
+    OUT=$(mog {mog_test_args} {$1} {test_args})
+    if [[ "$(< tests/{$1}.txt)" != "$OUT" ]]; then
+        echo Test {$1} failed
     fi
+
+write_test_file:
+    mog {mog_test_args} {$1} {test_args} > tests/{$1}.txt

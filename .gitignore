@@ -17,7 +17,8 @@ bin/
 *.iml
 
 # ENV
-.env
+.env.*
+!.env.local
 
 # vweb and database
 *.db

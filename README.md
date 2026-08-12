@@ -10,7 +10,7 @@ Define your tasks in a `.mog` file and run them with the `mog` command. Indentat
 - variables (just strings)
 - shell eval with `[]` for setting variables
 - interpolation of variables using `{}` (unless the `{` has a `$` in front, in which case it is left alone for the shell to interpret)
-- escape the `[` and `{` characters with `\`
+- escape mog special characters with `\`
 - additional cli arguments are passed to the task being ran
 - task descriptions with `@desc()` decorator
 - task options with `@options()` decorator
@@ -18,6 +18,7 @@ Define your tasks in a `.mog` file and run them with the `mog` command. Indentat
 - mog specific `if` statements to avoid having to use bash's confusing syntax
 - importing other `.mog` files and using the tasks or variables with dot syntax
 - call another task in the middle of a task
+- automatically load env files 
 
 
 # Installation
@@ -38,6 +39,10 @@ Then add it to your path or run `mog --symlink` to automatically create a symbol
 import (
 	path/to/other/dir/with/.mog/file
 	path/to/another/dir as my_alias
+)
+# an options block
+options (
+    print_commands=true
 )
 
 # variable declarations
@@ -80,23 +85,35 @@ test_ifs:
 
 ## Options/Config
 
-An optional config file lives at `~/.config/mog/config` and it will apply globaly to all tasks run by the current user. To set up a config file just run `mog --init-config` and one will be created in the correct spot with all the default values. The contents of the config file are key value pairs delimeted by `=`. Use the command line flag `--config-path [your_path]` to provide a config file from another location.
+An optional config file lives at `~/.config/mog/config` and it will apply globaly to all tasks run by the current user. To set up a config file just run `mog --init-config` and one will be created in the correct path with all the default values. The contents of the config file are key value pairs delimeted by `=`. Use the command line flag `--config-path [your_path]` to provide a config file from another location.
 
 ```
-shell_path=/bin/bash          # the shell you would like your tasks executed by
-source_file=                  # if you would like to source an external file to reference functions, env vars, etc. in your tasks
-no_cd=false                   # Don't change cwd when running a mog file from another directory with '-p'
-exit_on_error=false           # Sets the `e` shell flag via `set -e` at the begining of task
-error_on_undefined_vars=false # Sets the `u` shell flag via `set -u` at the begining of task
-exit_on_pipe_failures=false   # Sets the `o pipefail` shell flag via `set -o pipefail` at the begining of task
-print_commands=false          # Sets the `x` shell flag via `set -x` at the begining of task
+shell=bash                     # The shell you would like to execute tasks. For common shells this can just be the name or it can just be the path to a specific shell
+source_file=                   # If you would like to source an external file to reference functions, env vars, etc. in your tasks
+env_files=./.env, ./.env.local # Comma seperated list. Provide any env files to load before executing a task. Leading and trailing whitespace is insignificant
+no_cd=false                    # Don't change cwd when running a mog file from another directory with '-p'
+exit_on_error=false            # Exit as soon as a command returns a non-zero status
+error_on_undefined_vars=false  # Errors if the shell encounters an undefined variable
+exit_on_pipe_failures=false    # The return value of a pipeline is the value of the last command to exit with a non-zero status
+print_commands=false           # The shell will echo each command source before executing
+hide_exit_code_output=false    # Silences the extra mog outputs like the exit code
+new_shell_per_line=false       # Run each line in a task with a new shell instance
 ```
 
-Any of these options can be overridden per task by using the `options` decorator.
+Any of these options can be overridden per mog file with the options block.
+
+```
+options (
+    shell=zsh
+    exit_on_error=true
+)
+```
+
+They can also be overridden per task by using the `options` decorator.
 
 ```
 @options(
-    shell_path=/bin/zsh
+    shell=zsh
     exit_on_error=true
 )
 my_task:
@@ -119,3 +136,4 @@ Just run `mog -h|--help`
 
 - test on Windows?
 - add boolean operators for `if` statements
+- named arguments?
