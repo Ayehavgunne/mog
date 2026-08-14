@@ -91,6 +91,14 @@ fn (mut p Parser) move() {
 	p.current_token = p.tokens[p.pos]
 }
 
+fn (mut p Parser) peek(options PeekOptions) ?Token {
+	mut peek_pos := p.pos + options.num
+	if peek_pos > p.tokens.len - 1 {
+		return none
+	}
+	return p.tokens[peek_pos]
+}
+
 fn (mut p Parser) process_next_token() ! {
 	if p.current_token.token_type == .var {
 		val := p.current_token.value

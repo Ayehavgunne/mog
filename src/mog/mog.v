@@ -78,7 +78,7 @@ pub fn (m Mog) get_shell_from_task(task_name string) Shell {
 
 pub fn (mut m Mog) execute_task(task_name string, verbose bool) {
 	body := interpolate(m, task_name)
-	config := m.get_config_from_task(task_name)
+	mut config := m.get_config_from_task(task_name)
 
 	for env_file in config.env_files {
 		read_env_file(m.path, env_file)

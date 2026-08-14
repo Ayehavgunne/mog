@@ -16,7 +16,7 @@ test2:
 	echo in examples
 	pwd
 
-@desc(run my project)
+# run my project
 run:
     {build}
 	{start}
@@ -24,11 +24,11 @@ run:
 	echo ${EDITOR} # using a bash env var
 	{py} my_script.py
 
-@desc(build my project)
+# build my project
 build:
 	{py} build_script.py
 
-@desc(clean up some stuff)
+# clean up some stuff
 clean:
 	rm .file_or_whatev
 
@@ -40,13 +40,14 @@ start:
     shell=/bin/bash
     source_file=
 )
-@desc(for testing)
+# for testing
 test:
 	echo hello
 	echo {my_alias.some_var} # refering to a variable from an import
 	hogwash || echo no hogwash
 
 # a task named 'default' will be called if mog is called without a specific task name
+
 default:
     {test}
 

@@ -1,5 +1,5 @@
 options (
-	shell=zsh
+	shell=bash
 	source_file=
 	env_files=../.env, .env.local
 )
@@ -12,6 +12,7 @@ myvar = hi
 v_path = [which v]
 something = {v_path}/place
 name = [uname -s | tr "[:upper:]" "[:lower:]"]
+# another comment
 
 @options(
 	shell=zsh
@@ -27,6 +28,7 @@ test:
     echo ${TESTING3}
     echo ${TESTING4}
     echo ${TESTING5}
+	# comment in test
     echo ${TESTING6}
 	echo {myvar}
 	echo "\"\{{v_path}'"
@@ -47,15 +49,17 @@ test2:
 @options(
 	shell=sh
 )
+# description of test3 here
 test3:
 	echo $0
+	# comment
     echo wallaby {$1}
 
 @options(
-	shell=/bin/bash
+	shell=bash
 	source_file=
 )
-@desc(for testing)
+# for testing
 test4:
 	echo {$bold}{v_path}{$normal_intensity}
 	{up.test}
@@ -76,12 +80,14 @@ test6:
 
 test7:
 	echo yarp
-	@if {$@} == {myvar}
+	@if {$1} == {myvar}
 		echo stuff
-	@elif {$@} == other
+	@elif {$1} == other
 		echo doing other
-	@elif {$@} == thing
+	@elif {$1} == thing
 		echo doing thing
+	@elif {$2} in ["", things, foo]
+		echo doing stuff or things or foo
 	@elif empty ./tests
 		echo tests is empty
 	@else
@@ -136,6 +142,8 @@ test13:
 		echo matched ci
 	@fi
 
+# comment above test14 won't be a description
+
 test14:
 	echo in test14
 
@@ -163,9 +171,10 @@ test16:
 	echo $OUT
 
 @options(
-	shell=/opt/homebrew/bin/python3
+	shell=python
 	source_file=
 )
+# testing python scripting
 test17:
 	print("hello")
 	a = "hello"
@@ -174,6 +183,7 @@ test17:
 		for b in range(10):
 			print(b)
 
+# testing nested if statements
 test18:
 	@if {$1} == 5
 		@if {$2} == foo
@@ -192,12 +202,15 @@ test18:
 @options(
 	new_shell_per_line=true
 )
+# testing new shell per line
 test19:
 	export F=foo
 	echo $F
 	export B=bar && \
 	echo $B
 
+# description comments can go above decorators and still apply to the task below
+# testing printing of each command before they are executed
 @options(
 	print_commands=true
 	source_file=
@@ -211,6 +224,7 @@ test20:
 	shell=node
 	source_file=
 )
+# testing Javascript scripting with node
 test21:
 	console.log("hello")
 	let a = 2

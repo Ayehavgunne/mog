@@ -6,26 +6,27 @@ arch = [uname -m | tr "[:upper:]" "[:lower:]" | sed -e 's/aarch64/arm64/g' -e 's
 upload_path = ./release/mog_{kernel}_{arch}
 test_args = 5 foo bar baz
 mog_test_args = -p=tests --no-exit-code
+globals = -enable-globals
 
 default:
     {fmt}
 
-@desc(build mog with debug flags)
+# build mog with debug flags
 debug:
-	mkdir -p release && v -d debug_{$1} -o release/mog {src}
+	mkdir -p release && v {globals} -d debug_{$1} -o release/mog {src}
 
 b:
 	{build}
 
-@desc(build mog into an executable)
+# build mog into an executable
 build:
-	mkdir -p release && v -gc none -prod -o release/mog {src} && echo built
+	mkdir -p release && v {globals} -gc none -prod -o release/mog {src} && echo built
 
-@desc(check if code can be compiled successfully)
+# check if code can be compiled successfully
 check:
-	v -check {src} && echo code is good
+	v {globals} -check {src} && echo code is good
 
-@desc(format mog code to v standards)
+# format mog code to v standards
 fmt:
 	v fmt {src} -w
 
@@ -57,9 +58,15 @@ release:
     cp ./release/mog {upload_path}
     @if {$1} == ""
         gh release create {version} {upload_path}
+    @elif {$1} == "linux"
+        docker build -t mog .
+        docker run mog
     @else
         gh release upload --clobber {version} {upload_path}
     @fi
+
+prune:
+    docker image prune -a -f
 
 @options(
     shell=/bin/bash

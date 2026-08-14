@@ -43,15 +43,15 @@ pub fn (c Config) defaults() string {
 		value := c.$(field.name)
 		$if field.typ is string {
 			out += '${field.name}=${value}\n'
-		}
-		$if field.typ is Shell {
+		} $else $if field.typ is Shell {
 			out += '${field.name}=${value.name}\n'
-		}
-		$if field.typ is []string {
+		} $else $if field.typ is []string {
 			out += '${field.name}=${value.join(', ')}\n'
-		}
-		$if field.typ is bool {
+		} $else $if field.typ is bool {
 			out += '${field.name}=${value}\n'
+		} $else {
+			eprint('Unaccounted for type in Config struct (${field.typ})\n')
+			exit(2)
 		}
 	}
 	return out
@@ -75,12 +75,12 @@ pub fn parse_config(p ParseConfigOptions) !Config {
 	}
 	mut config_map := map[string]string{}
 	for line in file_contents.split_into_lines() {
-		mut parts := line.split('=')
-		if parts.len < 2 {
-			parts << ''
+		mut key, mut value := line.split_once('=') or {
+			eprint('Failed parsing config file. Expected = in (${line})')
+			exit(1)
 		}
-		key := parts[0].trim_space()
-		value := parts[1].trim_space()
+		key = key.trim_space()
+		value = value.trim_space()
 		config_map[key] = value
 	}
 	mut config := Config{}
@@ -88,19 +88,19 @@ pub fn parse_config(p ParseConfigOptions) !Config {
 		if field.name in config_map {
 			$if field.typ is bool {
 				config.$(field.name) = config_map[field.name] == 'true'
-			}
-			$if field.typ is string {
+			} $else $if field.typ is string {
 				config.$(field.name) = config_map[field.name]
-			}
-			$if field.typ is []string {
+			} $else $if field.typ is []string {
 				config.$(field.name) = config_map[field.name].split(',').map(it.trim_space())
-			}
-			$if field.typ is Shell {
-				config.$(field.name) = shell_map[config_map[field.name]] or {
-					mut shell := shell_map[config_map[field.name].split('/').last()]
+			} $else $if field.typ is Shell {
+				config.$(field.name) = shells[config_map[field.name]] or {
+					mut shell := shells[config_map[field.name].split('/').last()]
 					shell.path = config_map[field.name]
 					shell
 				}
+			} $else {
+				eprint('Unaccounted for type in Config struct (${field.typ}) on field ${field.name}\n')
+				exit(2)
 			}
 		} else {
 			config.$(field.name) = p.config.$(field.name)

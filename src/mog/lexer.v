@@ -57,6 +57,7 @@ mut:
 	word         string
 	context      LexerContext
 	current_char string
+	last_comment string
 	eof          bool
 }
 
@@ -143,7 +144,7 @@ fn (mut l Lexer) eat_decorator() Token {
 	return l.make_token(.decorator, l.reset_word())
 }
 
-fn (mut l Lexer) eat_word() !Token {
+fn (mut l Lexer) eat_word() ![]Token {
 	l.add_to_word(' ', command_delimeter, var_delimiter)
 	if l.word == mog_import {
 		t := l.make_token(.keyword, l.reset_word())
@@ -154,7 +155,7 @@ fn (mut l Lexer) eat_word() !Token {
 		}
 		l.next_char()
 		l.eat_newline() or { return err }
-		return t
+		return [t]
 	}
 	if l.word == file_level_options {
 		t := l.make_token(.keyword, l.reset_word())
@@ -165,18 +166,25 @@ fn (mut l Lexer) eat_word() !Token {
 		}
 		l.next_char()
 		l.eat_newline() or { return err }
-		return t
+		return [t]
 	}
 	if l.current_char == command_delimeter {
-		t := l.make_token(.command_name, l.reset_word())
+		mut tokens := []Token{}
+		if l.last_comment.len > 0 {
+			tokens << l.make_token(.decorator, 'desc')
+			tokens << l.make_token(.value, l.last_comment)
+			tokens << l.make_token(.end_block, 'END_BLOCK')
+			l.last_comment = ''
+		}
+		tokens << l.make_token(.command_name, l.reset_word())
 		l.context = .command_block
 		l.next_char()
 		l.eat_newline() or { return err }
-		return t
+		return tokens
 	}
 	if l.current_char == var_delimiter
 		|| l.peek(PeekOptions{ skip_whitespace: true }) == var_delimiter {
-		return l.eat_var()
+		return [l.eat_var()]
 	}
 	return error('Unkown syntax error at line ${l.line} : col ${l.column}')
 }
@@ -360,9 +368,12 @@ fn (mut l Lexer) eat_newline() !Token {
 }
 
 fn (mut l Lexer) skip_comment() {
+	mut comment_str := ''
 	for l.current_char != '\n' {
 		l.next_char()
+		comment_str += l.current_char
 	}
+	l.last_comment = comment_str.trim_space()
 }
 
 fn (mut l Lexer) skip_whitespace() {
@@ -399,16 +410,19 @@ fn (mut l Lexer) get_next_token() ![]Token {
 	}
 
 	if l.context == .import_block {
+		l.last_comment = ''
 		tokens := l.eat_imports()!
 		return tokens
 	}
 
 	if l.context == .options_block {
+		l.last_comment = ''
 		tokens := l.eat_options()!
 		return tokens
 	}
 
 	if l.context == .var_declaration {
+		l.last_comment = ''
 		return [l.eat_value()]
 	}
 
@@ -430,15 +444,20 @@ fn (mut l Lexer) get_next_token() ![]Token {
 			l.context = .root
 			l.next_char()
 			l.next_char()
+			l.last_comment = ''
 			return [l.make_token(.end_block, 'END_BLOCK')]
 		}
 		tokens << l.eat_command_body() or { return [] }
+		l.last_comment = ''
 		return tokens
 	}
 
 	if l.current_char == '\n' {
+		if l.peek() == '\n' && l.context == .root {
+			l.last_comment = ''
+		}
 		return [l.eat_newline()!]
 	}
 
-	return [l.eat_word()!]
+	return l.eat_word()!
 }

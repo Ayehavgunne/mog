@@ -2,10 +2,26 @@ module main
 
 import os
 import v.vmod
-import mog { Config, Mog, debug, parse, parse_config }
+import mog { Config, Mog, Shell, debug, parse, parse_config, parse_shell }
 
 const default_task = 'default'
 const value_arg_keys = ['-s', '--shell', '-p', '--config-path']
+
+__global (
+	shells map[string]Shell
+)
+
+fn init() {
+	shells = {
+		'bash':    mog.bash
+		'sh':      mog.sh
+		'zsh':     mog.zsh
+		'python':  mog.python
+		'python3': mog.python
+		'node':    mog.node
+		'nodejs':  mog.node
+	}
+}
 
 fn main() {
 	cur_dir := os.getwd()
@@ -110,6 +126,12 @@ fn main() {
 		config_path = value_args['--config-path']
 	}
 
+	shell_files := os.glob('${mog.config_path}/*.shell') or { [] }
+	for shell_file_path in shell_files {
+		new_shell := parse_shell(shell_path: shell_file_path)
+		shells[new_shell.name] = new_shell
+	}
+
 	mut config := parse_config(config_path: config_path) or { Config{} }
 
 	if '--no-exit-code' in dash_args {
@@ -127,9 +149,9 @@ fn main() {
 	}
 
 	if '-s' in value_args {
-		m.shell_override = mog.shell_map[value_args['-s']]
+		m.shell_override = shells[value_args['-s']]
 	} else if '--shell' in value_args {
-		m.shell_override = mog.shell_map[value_args['--shell']]
+		m.shell_override = shells[value_args['--shell']]
 	}
 
 	if '-l' in dash_args || '--list' in dash_args {
@@ -207,6 +229,9 @@ fn sub_print_commands(m Mog, mog_name string, plain bool) {
 	}
 	len := longest(labels)
 	for name, task in m.tasks {
+		if name.starts_with('_') {
+			continue
+		}
 		just_name := ljust('  ${mut_mog_name}${name}:', len, ' ')
 		if plain {
 			println('${mut_mog_name}${name}')
