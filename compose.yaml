@@ -1,7 +1,0 @@
-services:
-  mog:
-    platform: linux/amd64
-    build:
-      context: .
-      dockerfile: Dockerfile
-    tty: true

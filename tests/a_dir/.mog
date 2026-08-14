@@ -14,3 +14,6 @@ test2:
 		TYPE=-ci
 	fi
     echo build$TYPE
+
+_hidden_task:
+    echo you cant see me

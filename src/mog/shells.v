@@ -4,7 +4,7 @@ import os
 
 pub struct Shell {
 pub:
-	name                         string
+	aliases                      []string
 	interpreting_flag            string = '-c'
 	exit_on_error_flag           string = 'e'
 	error_on_undefined_vars_flag string = 'u'
@@ -17,6 +17,7 @@ pub:
 	supports_mog_conditionals    bool = true
 	supports_mog_replacement     bool = true
 pub mut:
+	name string
 	path string
 }
 
@@ -40,6 +41,31 @@ fn (s Shell) execute(body string) string {
 
 fn (s Shell) eval(body string) string {
 	return os.execute("${s.path} ${s.interpreting_flag} '${body}'").output.trim_space()
+}
+
+fn (mut s Shell) set_path() bool {
+	result := os.execute("\${SHELL-bash} -c 'which ${s.name}'")
+	if result.output.contains('aliased to') {
+		result2 := os.execute("\${SHELL-bash} -c 'which ${result.output.split(' ').last()}'")
+		if result2.exit_code == 0 {
+			s.path = result2.output.trim_space()
+			return true
+		}
+	}
+	if result.output.contains('not found') {
+		for alias in s.aliases {
+			result_n := os.execute("\${SHELL-bash} -c 'which ${alias}'")
+			if result_n.exit_code == 0 {
+				s.path = result_n.output.trim_space()
+				return true
+			}
+		}
+	}
+	if result.exit_code == 0 {
+		s.path = result.output.trim_space()
+		return true
+	}
+	return false
 }
 
 fn (s Shell) run(body string, config Config, verbose bool, path string) int {
@@ -103,6 +129,50 @@ fn (s Shell) add_option_flags(config Config) string {
 	}
 }
 
+@[params]
+pub struct ParseShellOptions {
+pub:
+	contents   string
+	shell_path string
+mut:
+	shell Shell
+}
+
+pub fn parse_shell(p ParseShellOptions) Shell {
+	mut file_contents := ''
+	if p.contents.len == 0 {
+		file_contents = os.read_file(p.shell_path) or { '' }
+	} else {
+		file_contents = p.contents
+	}
+	mut shell_map := map[string]string{}
+	for line in file_contents.split_into_lines() {
+		mut key, mut value := line.split_once('=') or {
+			eprint('Failed parsing shell file. Expected = in (${line})')
+			exit(1)
+		}
+		key = key.trim_space()
+		value = value.trim_space()
+		shell_map[key] = value
+	}
+	mut shell := Shell{}
+	$for field in Shell.fields {
+		if field.name in shell_map {
+			$if field.typ is bool {
+				shell.$(field.name) = shell_map[field.name] == 'true'
+			} $else $if field.typ is string {
+				shell.$(field.name) = shell_map[field.name]
+			} $else $if field.typ is []string {
+				shell.$(field.name) = shell_map[field.name].split(',').map(it.trim_space())
+			} $else {
+				eprint('Unaccounted for type in Shell struct (${field.typ}) on field ${field.name}\n')
+				exit(2)
+			}
+		}
+	}
+	return shell
+}
+
 pub const bash = Shell{
 	name: 'bash'
 	path: '/bin/bash'
@@ -120,7 +190,8 @@ pub const zsh = Shell{
 
 pub const python = Shell{
 	name:                         'python'
-	path:                         '/user/bin/python'
+	path:                         'python3'
+	aliases:                      ['python3', 'python2', 'python']
 	exit_on_error_flag:           ''
 	error_on_undefined_vars_flag: ''
 	print_commands_flag:          ''
@@ -147,12 +218,12 @@ pub const node = Shell{
 	supports_mog_replacement:     false
 }
 
-pub const shell_map = {
-	'bash':    bash
-	'sh':      sh
-	'zsh':     zsh
-	'python':  python
-	'python3': python
-	'node':    node
-	'nodejs':  node
-}
+// pub const shells = {
+// 	'bash':    bash
+// 	'sh':      sh
+// 	'zsh':     zsh
+// 	'python':  python
+// 	'python3': python
+// 	'node':    node
+// 	'nodejs':  node
+// }

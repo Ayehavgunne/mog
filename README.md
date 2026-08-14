@@ -12,9 +12,9 @@ Define your tasks in a `.mog` file and run them with the `mog` command. Indentat
 - interpolation of variables using `{}` (unless the `{` has a `$` in front, in which case it is left alone for the shell to interpret)
 - escape mog special characters with `\`
 - additional cli arguments are passed to the task being ran
-- task descriptions with `@desc()` decorator
-- task options with `@options()` decorator
 - single line comments with `#`
+- task descriptions with comments immediately before a task name
+- task options with `@options()` decorator
 - mog specific `if` statements to avoid having to use bash's confusing syntax
 - importing other `.mog` files and using the tasks or variables with dot syntax
 - call another task in the middle of a task
@@ -40,7 +40,7 @@ import (
 	path/to/other/dir/with/.mog/file
 	path/to/another/dir as my_alias
 )
-# an options block
+# a file level options block
 options (
     print_commands=true
 )
@@ -51,16 +51,20 @@ py = python{py_version} # variable string interpolation
 v_path = [which v] # storing a shell eval into a variable
 
 # the default task which is executed when calling a bare 'mog' with no arguments
+
 default:
     {run}
 
-@desc(run my project) # description to show up when running 'mog -l'
+# comments immediately before a task name will end up as a description
+# descriptions are output when running 'mog -l'
+
+# run my project
 run:
 	echo ${EDITOR} # task body is plain shell scripting
 	{py} my_script.py # with mog string interpolation on top
     {my_alias.some_task} arg1 arg2 "quoted arg" # reference imported tasks and even pass different arguments to them
 
-@desc(for testing)
+# for testing
 test:
 	echo {v_path}
 	sleep 2
