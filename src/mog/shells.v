@@ -217,13 +217,3 @@ pub const node = Shell{
 	supports_mog_conditionals:    false
 	supports_mog_replacement:     false
 }
-
-// pub const shells = {
-// 	'bash':    bash
-// 	'sh':      sh
-// 	'zsh':     zsh
-// 	'python':  python
-// 	'python3': python
-// 	'node':    node
-// 	'nodejs':  node
-// }

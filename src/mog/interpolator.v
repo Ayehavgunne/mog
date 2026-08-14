@@ -13,7 +13,7 @@ const if_statement = '${control_flow_delimeter}if'
 const elif_statement = '${control_flow_delimeter}elif'
 const else_statement = '${control_flow_delimeter}else'
 const close_if_statement = '${control_flow_delimeter}fi'
-const bin_operators = ['==', '!=', '<', '<=', '>', '>=']
+const bin_operators = ['==', '!=', '<', '<=', '>', '>=', 'in']
 const unary_operators = ['file_exists', 'dir_exists', 'empty', 'not_empty']
 const logical_operators = ['and', 'or', 'not']
 const escape = '\\'
@@ -587,6 +587,7 @@ enum BinaryOperator {
 	lte
 	gt
 	gte
+	in
 }
 
 struct BinaryOperation {
@@ -658,6 +659,10 @@ fn (b BinaryOperation) evaluate() bool {
 			}
 			return remove_surrounding_quotes(b.left) >= remove_surrounding_quotes(b.right)
 		}
+		.in {
+			return remove_surrounding_quotes(b.left) in b.right.replace_once('[', '').reverse().replace_once(']',
+				'').reverse().split(',').map(it.trim_space()).map(remove_surrounding_quotes(it)).map(it.trim_space())
+		}
 	}
 }
 
@@ -718,6 +723,9 @@ fn (mut i Interpolator) eat_bin_op_char() BinaryOperator {
 	}
 	if op == '<=' {
 		return .lte
+	}
+	if op == 'in' {
+		return .in
 	}
 	return .eq
 }

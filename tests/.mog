@@ -80,12 +80,14 @@ test6:
 
 test7:
 	echo yarp
-	@if {$@} == {myvar}
+	@if {$1} == {myvar}
 		echo stuff
-	@elif {$@} == other
+	@elif {$1} == other
 		echo doing other
-	@elif {$@} == thing
+	@elif {$1} == thing
 		echo doing thing
+	@elif {$2} in ["", things, foo]
+		echo doing stuff or things or foo
 	@elif empty ./tests
 		echo tests is empty
 	@else
