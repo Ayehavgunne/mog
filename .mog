@@ -19,7 +19,7 @@ b:
 
 @desc(build mog into an executable)
 build:
-	mkdir -p release && v -prod -o release/mog {src} && echo built
+	mkdir -p release && v -gc none -prod -o release/mog {src} && echo built
 
 @desc(check if code can be compiled successfully)
 check:
@@ -78,10 +78,10 @@ test:
     @fi
 
 _compare_test_file:
-    OUT=$(mog {mog_test_args} {$1} {test_args})
+    OUT=$(mog {mog_test_args} {$1} {test_args} 2>&1)
     if [[ "$(< tests/{$1}.txt)" != "$OUT" ]]; then
         echo Test {$1} failed
     fi
 
 write_test_file:
-    mog {mog_test_args} {$1} {test_args} > tests/{$1}.txt
+    mog {mog_test_args} {$1} {test_args} &> tests/{$1}.txt

@@ -110,27 +110,26 @@ fn main() {
 		config_path = value_args['--config-path']
 	}
 
-	config := parse_config(config_path: config_path) or { Config{} }
+	mut config := parse_config(config_path: config_path) or { Config{} }
+
+	if '--no-exit-code' in dash_args {
+		config.hide_exit_code_output = true
+	}
 
 	mut m := Mog{}
 
 	if mog_file.len > 0 {
-		m = parse(mog_file, parse_args, config) or {
+		m = parse(mog_file, parse_args, mog_file_path, config) or {
 			eprint('Failed to parse .mog file. ${err}\n')
 			exit(1)
 		}
-		debug('${m}')
+		debug(s: '${m}')
 	}
 
 	if '-s' in value_args {
-		m.config.shell = mog.shell_map[value_args['-s']] or { mog.bash }
+		m.shell_override = mog.shell_map[value_args['-s']]
 	} else if '--shell' in value_args {
-		m.config.shell = mog.shell_map[value_args['--shell']] or { mog.bash }
-	}
-
-	mut no_exit_code := false
-	if '--no-exit-code' in dash_args {
-		no_exit_code = true
+		m.shell_override = mog.shell_map[value_args['--shell']]
 	}
 
 	if '-l' in dash_args || '--list' in dash_args {
@@ -181,12 +180,7 @@ fn main() {
 	}
 
 	task_name := args.pop_left()
-	mut prepend := ''
-	if mog_file_path != '.' && '--no-cd' !in dash_args
-		&& m.get_shell_from_task(task_name).supports_cd {
-		prepend = 'cd ${mog_file_path}\n'
-	}
-	m.execute_task(task_name, verbose, prepend, no_exit_code, mog_file_path)
+	m.execute_task(task_name, verbose)
 }
 
 fn print_version() {

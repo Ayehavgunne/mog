@@ -12,8 +12,8 @@ const indent = '\t'
 const import_alias_delimiter = 'as'
 
 @[if debug_lexer ?]
-fn lexer_debug(l Lexer) {
-	println('DEBUG: char(${l.current_char}) word(${l.word})'.replace('\n', '\\n'))
+fn lexer_debug(l Lexer, s ...string) {
+	println('DEBUG: char(${l.current_char}) word(${l.word}) | ${s}'.replace('\n', '\\n'))
 }
 
 enum TokenType {
@@ -22,6 +22,7 @@ enum TokenType {
 	keyword
 	command_name
 	command_body
+	indent
 	end_block
 	decorator
 	new_line
@@ -73,14 +74,14 @@ fn lex(file string) ![]Token {
 	for !l.eof {
 		token := l.get_next_token() or { return error('Syntax error: ${err}') }
 		for t in token {
-			debug('${t}')
+			debug(s: '${t}', replace_newlines: false)
 		}
 		tokens << token
 	}
 	if tokens.last().token_type == .eof {
 		tokens.pop()
 	}
-	debug('END LEX\n')
+	debug(s: 'END LEX')
 	return tokens
 }
 
@@ -136,14 +137,14 @@ fn (mut l Lexer) end_of_file() {
 }
 
 fn (mut l Lexer) eat_decorator() Token {
-	l.add_to_word([block_start])
+	l.add_to_word(block_start)
 	l.context = .decorator_block
 	l.next_char()
 	return l.make_token(.decorator, l.reset_word())
 }
 
 fn (mut l Lexer) eat_word() !Token {
-	l.add_to_word([' ', command_delimeter, var_delimiter])
+	l.add_to_word(' ', command_delimeter, var_delimiter)
 	if l.word == mog_import {
 		t := l.make_token(.keyword, l.reset_word())
 		l.context = .import_block
@@ -181,15 +182,6 @@ fn (mut l Lexer) eat_word() !Token {
 }
 
 fn (mut l Lexer) is_indent() bool {
-	if l.current_char == '\n' {
-		if l.peek() == indent {
-			return true
-		}
-		if l.peek() == ' ' && l.peek(num: 2) == ' ' && l.peek(num: 3) == ' '
-			&& l.peek(num: 4) == ' ' {
-			return true
-		}
-	}
 	if l.current_char == indent {
 		return true
 	}
@@ -197,6 +189,21 @@ fn (mut l Lexer) is_indent() bool {
 		return true
 	}
 	return false
+}
+
+fn (mut l Lexer) eat_indent() !Token {
+	if l.current_char == indent {
+		l.next_char()
+		return l.make_token(.indent, indent)
+	}
+	if l.current_char == ' ' && l.peek() == ' ' && l.peek(num: 2) == ' ' && l.peek(num: 3) == ' ' {
+		l.next_char()
+		l.next_char()
+		l.next_char()
+		l.next_char()
+		return l.make_token(.indent, '    ')
+	}
+	return error('Expected indent at line ${l.line} : col ${l.column}')
 }
 
 fn (mut l Lexer) eat_command_body() !Token {
@@ -208,14 +215,12 @@ fn (mut l Lexer) eat_command_body() !Token {
 		if l.peek() == '\n' || !l.is_indent() {
 			l.context = .root
 		}
-		return l.eat_newline()
+		return l.eat_newline()!
 	}
-	if !l.is_indent() {
-		l.context = .root
-		return error('no indent')
+	if l.is_indent() {
+		return l.eat_indent()
 	}
-	l.skip_whitespace()
-	l.add_to_word(['\n', ''])
+	l.add_to_word('\n', '')
 	return l.make_token(.command_body, l.reset_word())
 }
 
@@ -230,7 +235,7 @@ fn (mut l Lexer) eat_var() Token {
 	return t
 }
 
-fn (mut l Lexer) add_to_word(stop_chars []string) {
+fn (mut l Lexer) add_to_word(stop_chars ...string) {
 	for l.current_char !in stop_chars {
 		l.word += l.eat_char()
 	}
@@ -316,7 +321,7 @@ fn (mut l Lexer) eat_value() Token {
 	if l.context != .var_declaration {
 		stop_chars << ' '
 	}
-	l.add_to_word(stop_chars)
+	l.add_to_word(...stop_chars)
 	if l.current_char == comment {
 		l.skip_comment()
 	}
@@ -381,7 +386,7 @@ fn (mut l Lexer) get_next_token() ![]Token {
 		l.skip_comment()
 	}
 
-	if l.current_char == decorator {
+	if l.current_char == decorator && l.context != .command_block {
 		l.next_char()
 		return [l.eat_decorator()]
 	}

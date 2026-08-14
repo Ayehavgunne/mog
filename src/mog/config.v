@@ -21,7 +21,14 @@ fn (c Config) to_str() string {
 	$for field in Config.fields {
 		value := c.$(field.name)
 		$if field.typ is Shell {
-			out += '    ${field.name}=${value.path}\n'
+			out += '    ${field.name}=Shell{\n'
+			$for shell_field in Shell.fields {
+				shell_value := c.shell.$(shell_field.name)
+				out += '        ${shell_field.name}=${shell_value}\n'
+			}
+			out += '    }\n'
+		} $else $if field.typ is []string {
+			out += '    ${field.name}=${value.join(', ')}\n'
 		} $else {
 			out += '    ${field.name}=${value}\n'
 		}
@@ -34,7 +41,18 @@ pub fn (c Config) defaults() string {
 	mut out := ''
 	$for field in Config.fields {
 		value := c.$(field.name)
-		out += '${field.name}=${value}\n'
+		$if field.typ is string {
+			out += '${field.name}=${value}\n'
+		}
+		$if field.typ is Shell {
+			out += '${field.name}=${value.name}\n'
+		}
+		$if field.typ is []string {
+			out += '${field.name}=${value.join(', ')}\n'
+		}
+		$if field.typ is bool {
+			out += '${field.name}=${value}\n'
+		}
 	}
 	return out
 }
