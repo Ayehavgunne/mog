@@ -62,16 +62,15 @@ pub struct ParseConfigOptions {
 pub:
 	contents    string
 	config_path string = config_file_path
-mut:
-	config Config
+	config      Config
 }
 
-pub fn parse_config(p ParseConfigOptions) !Config {
+pub fn parse_config(options ParseConfigOptions) !Config {
 	mut file_contents := ''
-	if p.contents.len == 0 {
-		file_contents = os.read_file(p.config_path) or { '' }
+	if options.contents.len == 0 {
+		file_contents = os.read_file(options.config_path) or { '' }
 	} else {
-		file_contents = p.contents
+		file_contents = options.contents
 	}
 	mut config_map := map[string]string{}
 	for line in file_contents.split_into_lines() {
@@ -103,7 +102,7 @@ pub fn parse_config(p ParseConfigOptions) !Config {
 				exit(2)
 			}
 		} else {
-			config.$(field.name) = p.config.$(field.name)
+			config.$(field.name) = options.config.$(field.name)
 		}
 	}
 	if !config.shell.supports_sourcing {

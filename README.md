@@ -139,5 +139,3 @@ Just run `mog -h|--help`
 ## TODO
 
 - test on Windows?
-- add boolean operators for `if` statements
-- named arguments?
