@@ -13,7 +13,7 @@ fn parser_debug(on bool, p Parser, s string) {
 
 enum ParserContext {
 	root
-	command_block
+	task_block
 	decorator_block
 	import_block
 	options_block
@@ -23,15 +23,15 @@ enum ParserContext {
 struct Parser {
 	tokens []Token
 mut:
-	pos             int
-	import_paths    map[string]string
-	vars            map[string]string
-	tasks           map[string]Task
-	current_command Task
-	config          Config
-	current_token   Token
-	context         ParserContext
-	eof             bool
+	pos           int
+	import_paths  map[string]string
+	vars          map[string]string
+	tasks         map[string]Task
+	current_task  Task
+	config        Config
+	current_token Token
+	context       ParserContext
+	eof           bool
 }
 
 pub fn parse(file string, args []string, mog_file_path string, config Config) !Mog {
@@ -126,13 +126,16 @@ fn (mut p Parser) process_next_token() ! {
 		p.context = .root
 		match decorator_name {
 			'desc' {
-				p.current_command.desc = values.join(' ')
+				p.current_task.desc = values.join(' ')
 			}
 			'options' {
-				p.current_command.config = parse_config(
+				p.current_task.config = parse_config(
 					contents: values.join('\n')
-					config:   p.current_command.config or { p.config }
-				) or { p.config }
+					config:   p.config
+				) or {
+					eprint('Failed to parse file level options\n')
+					exit(1)
+				}
 			}
 			else {
 				return error("Unrecognized decorator type '${decorator_name}'")
@@ -140,34 +143,36 @@ fn (mut p Parser) process_next_token() ! {
 		}
 	}
 
-	if p.current_token.token_type == .command_name {
-		command_name := p.current_token.value
+	if p.current_token.token_type == .task_name {
+		task_name := p.current_token.value
 		p.move()
 		mut body := ''
 		mut preserv_indentation := false
-		if config := p.current_command.config {
+		if config := p.current_task.config {
 			preserv_indentation = config.shell.preserv_indentation
 		}
-		for p.current_token.token_type in [.command_body, .indent] {
+		for p.current_token.token_type in [.task_body, .indent] {
 			if p.eof {
 				break
 			}
 			if preserv_indentation && p.current_token.token_type == .indent {
 				body += p.current_token.value
-			} else if p.current_token.token_type == .command_body {
+			} else if p.current_token.token_type == .task_body {
 				body += p.current_token.value
 			}
 			p.move()
 			if p.current_token.token_type == .new_line {
-				p.current_command.body << body
+				p.current_task.body << body
 				body = ''
 				p.move()
 			}
 		}
-		p.current_command.body << body
-		p.tasks[command_name] = p.current_command
-		p.current_command = Task{}
-		if p.current_token.token_type != .command_body {
+		p.current_task.body << body
+		p.current_task.config = p.current_task.config or { p.config }
+
+		p.tasks[task_name] = p.current_task
+		p.current_task = Task{}
+		if p.current_token.token_type != .task_body {
 			return
 		}
 	}
@@ -218,10 +223,13 @@ fn (mut p Parser) process_next_token() ! {
 					p.move()
 				}
 			}
-			p.current_command.config = parse_config(
+			p.config = parse_config(
 				contents: values.join('\n')
 				config:   p.config
-			) or { p.config }
+			) or {
+				eprint('Failed to parse file level options\n')
+				exit(1)
+			}
 		}
 	}
 

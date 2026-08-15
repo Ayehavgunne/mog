@@ -159,7 +159,7 @@ fn main() {
 		if '--no-desc' in dash_args {
 			plain = true
 		}
-		print_commands(m, plain)
+		print_tasks(m, plain)
 		exit(0)
 	}
 
@@ -210,15 +210,15 @@ fn print_version() {
 	println('${vm.name} ${vm.version}')
 }
 
-fn print_commands(m ?Mog, plain bool) {
+fn print_tasks(m ?Mog, plain bool) {
 	definite_m := m or { return }
 	if !plain {
 		println('Available tasks:')
 	}
-	sub_print_commands(definite_m, '', plain)
+	sub_print_tasks(definite_m, '', plain)
 }
 
-fn sub_print_commands(m Mog, mog_name string, plain bool) {
+fn sub_print_tasks(m Mog, mog_name string, plain bool) {
 	mut mut_mog_name := mog_name.clone()
 	if mog_name.len > 0 {
 		mut_mog_name += '.'
@@ -242,7 +242,7 @@ fn sub_print_commands(m Mog, mog_name string, plain bool) {
 		}
 	}
 	for import_mog_name, imported_mog in m.imports {
-		sub_print_commands(imported_mog, '${mut_mog_name}${import_mog_name}', plain)
+		sub_print_tasks(imported_mog, '${mut_mog_name}${import_mog_name}', plain)
 	}
 }
 
@@ -258,7 +258,7 @@ fn print_help(m ?Mog) {
 	println('')
 	if definite_mog := m {
 		if definite_mog.tasks.keys().len > 0 || definite_mog.imports.keys().len > 0 {
-			print_commands(m, false)
+			print_tasks(m, false)
 		}
 	}
 }
@@ -279,7 +279,7 @@ fn print_list_help_topics() {
 fn print_cli_options() {
 	println('Options:')
 	println('  -v | --verbose:\t\tShow the commands that will be executed before running them')
-	println('  -s | --shell [shell]:\tRun the .mog file commands with a different shell. Default is bash. Can be the name of a common shell or a absolute path to your shell')
+	println('  -s | --shell [shell]:\tRun the .mog file tasks with a different shell. Default is bash. Can be the name of a common shell or a absolute path to your shell')
 	println('  --home:\t\t\tRun the .mog file that is in your home directory. Ignores -p option')
 	println('  -p [path]:\t\t\tRun a .mog file from another location')
 	println('  --config-path [path]:\t\tRun with a config file from another location')

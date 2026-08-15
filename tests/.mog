@@ -24,12 +24,14 @@ test:
 	echo $ZSH_THEME
 	echo $0
     echo ${TESTING1}
-    echo ${TESTING2}
-    echo ${TESTING3}
+    echo ${_TESTING2}
+    echo ${TESTING_3}
+    echo ${URL}
     echo ${TESTING4}
     echo ${TESTING5}
 	# comment in test
     echo ${TESTING6}
+    echo ${TESTING7}
 	echo {myvar}
 	echo "\"\{{v_path}'"
 	echo {something}
@@ -53,6 +55,7 @@ test2:
 test3:
 	echo $0
 	# comment
+	echo ${TESTING1}
     echo wallaby {$1}
 
 @options(
@@ -123,8 +126,9 @@ test11:
 	@fi
 
 test12:
-	@if {$@} > 4 #and {$@} < 8
-		echo greater than 4 and less than 8
+	echo {$@}
+	@if {$1} > 4
+		echo greater than 4
 	@else
 		echo not within range
 	@fi

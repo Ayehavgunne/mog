@@ -69,7 +69,7 @@ prune:
     docker image prune -a -f
 
 @options(
-    shell=/bin/bash
+    shell=bash
     source_file=
     hide_exit_code_output=true
     exit_on_error=false

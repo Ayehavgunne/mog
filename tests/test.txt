@@ -2,12 +2,17 @@ don't /usr/local/bin/v /bin/zsh stuff
 foo { bar
 apple
 /bin/zsh
-testing1
-testing2
+test#i"ng1
+testing2 value
 testing3
-testing4
+https://example.com/path?foo=bar&baz=qux
+ testing4' hello
 testing5
+yes
 testing6
+more
+lines
+
 hi
 "{/usr/local/bin/v'
 /usr/local/bin/v/place

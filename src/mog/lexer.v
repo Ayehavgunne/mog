@@ -4,7 +4,7 @@ const comment = '#'
 const decorator = '@'
 const mog_import = 'import'
 const file_level_options = 'options'
-const command_delimeter = ':'
+const task_delimeter = ':'
 const var_delimiter = '='
 const block_start = '('
 const block_end = ')'
@@ -20,8 +20,8 @@ enum TokenType {
 	var
 	value
 	keyword
-	command_name
-	command_body
+	task_name
+	task_body
 	indent
 	end_block
 	decorator
@@ -41,7 +41,7 @@ pub:
 
 enum LexerContext {
 	root
-	command_block
+	task_block
 	decorator_block
 	import_block
 	options_block
@@ -145,7 +145,7 @@ fn (mut l Lexer) eat_decorator() Token {
 }
 
 fn (mut l Lexer) eat_word() ![]Token {
-	l.add_to_word(' ', command_delimeter, var_delimiter)
+	l.add_to_word(' ', task_delimeter, var_delimiter)
 	if l.word == mog_import {
 		t := l.make_token(.keyword, l.reset_word())
 		l.context = .import_block
@@ -168,7 +168,7 @@ fn (mut l Lexer) eat_word() ![]Token {
 		l.eat_newline() or { return err }
 		return [t]
 	}
-	if l.current_char == command_delimeter {
+	if l.current_char == task_delimeter {
 		mut tokens := []Token{}
 		if l.last_comment.len > 0 {
 			tokens << l.make_token(.decorator, 'desc')
@@ -176,8 +176,8 @@ fn (mut l Lexer) eat_word() ![]Token {
 			tokens << l.make_token(.end_block, 'END_BLOCK')
 			l.last_comment = ''
 		}
-		tokens << l.make_token(.command_name, l.reset_word())
-		l.context = .command_block
+		tokens << l.make_token(.task_name, l.reset_word())
+		l.context = .task_block
 		l.next_char()
 		l.eat_newline() or { return err }
 		return tokens
@@ -214,7 +214,7 @@ fn (mut l Lexer) eat_indent() !Token {
 	return error('Expected indent at line ${l.line} : col ${l.column}')
 }
 
-fn (mut l Lexer) eat_command_body() !Token {
+fn (mut l Lexer) eat_task_body() !Token {
 	if l.current_char == '' || l.peek() == '' {
 		l.end_of_file()
 		return l.make_token(.eof, 'EOF')
@@ -229,7 +229,7 @@ fn (mut l Lexer) eat_command_body() !Token {
 		return l.eat_indent()
 	}
 	l.add_to_word('\n', '')
-	return l.make_token(.command_body, l.reset_word())
+	return l.make_token(.task_body, l.reset_word())
 }
 
 fn (mut l Lexer) eat_var() Token {
@@ -389,7 +389,7 @@ fn (mut l Lexer) get_next_token() ![]Token {
 		return [l.make_token(.eof, 'EOF')]
 	}
 
-	if l.current_char == ' ' && l.context != .command_block {
+	if l.current_char == ' ' && l.context != .task_block {
 		l.skip_whitespace()
 	}
 
@@ -397,7 +397,7 @@ fn (mut l Lexer) get_next_token() ![]Token {
 		l.skip_comment()
 	}
 
-	if l.current_char == decorator && l.context != .command_block {
+	if l.current_char == decorator && l.context != .task_block {
 		l.next_char()
 		return [l.eat_decorator()]
 	}
@@ -435,7 +435,7 @@ fn (mut l Lexer) get_next_token() ![]Token {
 		return tokens
 	}
 
-	if l.context == .command_block {
+	if l.context == .task_block {
 		mut tokens := []Token{}
 		if l.current_char == '\n' {
 			tokens << l.eat_newline()!
@@ -447,7 +447,7 @@ fn (mut l Lexer) get_next_token() ![]Token {
 			l.last_comment = ''
 			return [l.make_token(.end_block, 'END_BLOCK')]
 		}
-		tokens << l.eat_command_body() or { return [] }
+		tokens << l.eat_task_body() or { return [] }
 		l.last_comment = ''
 		return tokens
 	}
