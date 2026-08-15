@@ -54,7 +54,11 @@ tag:
     git tag {version}
     git push origin --tags
 
+@options(
+    shell=bash
+)
 release:
+    echo $0
     cp ./release/mog {upload_path}
     @if {$1} == ""
         gh release create {version} {upload_path}

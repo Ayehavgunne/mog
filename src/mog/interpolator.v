@@ -443,6 +443,9 @@ fn (mut i Interpolator) eat_and_replace_till(end_words ...string) string {
 		if word.contains(end_word) {
 			end_word_len := end_word.len
 			word = word.substr(0, word.len - end_word_len + 1)
+			if word.ends_with('}') {
+				word = word.substr(0, word.len - 1)
+			}
 			i.pos = (i.pos - end_word_len) - 1
 			if i.eof {
 				i.eof = false
