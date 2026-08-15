@@ -179,6 +179,8 @@ fn (mut l Lexer) eat_word() ![]Token {
 		tokens << l.make_token(.task_name, l.reset_word())
 		l.context = .task_block
 		l.next_char()
+		l.skip_whitespace()
+		l.skip_comment()
 		l.eat_newline() or { return err }
 		return tokens
 	}

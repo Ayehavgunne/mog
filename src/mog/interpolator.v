@@ -376,11 +376,9 @@ fn (mut i Interpolator) eat_and_replace_till(end_words ...string) string {
 	mut word := ''
 	interpolator_debug(false, i, 'end_words=${end_words}', '41')
 	for i.current_char !in end_words && i.current_char != '' && !i.eof {
-		mut found_word := false
 		interpolator_debug(false, i, '${end_words}', '42')
 		for end_word in end_words {
 			if word.contains(end_word) {
-				found_word = true
 				end_word_len := end_word.len
 				word = word.substr(0, word.len - end_word_len)
 				i.pos = (i.pos - end_word_len) - 1
@@ -389,12 +387,9 @@ fn (mut i Interpolator) eat_and_replace_till(end_words ...string) string {
 				}
 				interpolator_debug(false, i, 'end_word=${end_word}', 'word=${word}', '43')
 				i.next_char()
-				break
+				return word
 			}
 			interpolator_debug(false, i, 'end_words=${end_words}', 'word=${word}', '53')
-		}
-		if found_word {
-			break
 		}
 
 		if word == if_statement {
@@ -442,7 +437,7 @@ fn (mut i Interpolator) eat_and_replace_till(end_words ...string) string {
 	for end_word in end_words {
 		if word.contains(end_word) {
 			end_word_len := end_word.len
-			word = word.substr(0, word.len - end_word_len + 1)
+			word = word.substr(0, word.len - end_word_len)
 			i.pos = (i.pos - end_word_len) - 1
 			if i.eof {
 				i.eof = false
@@ -763,8 +758,10 @@ fn str_to_un_op(op string) UnaryOperator {
 }
 
 fn (mut i Interpolator) eat_fi() {
+	// println('POS ${i.pos} CHAR (${i.current_char})')
 	fi_keyword := i.eat_till('\n').trim_space()
 	interpolator_debug(false, i, fi_keyword, '741')
+	// println('POS ${i.pos} CHAR (${i.current_char}) WORD ${fi_keyword}')
 	if fi_keyword != close_if_statement {
 		eprint("Syntax error. Missing closing of if statement with '${close_if_statement}'\n")
 		exit(2)
