@@ -191,16 +191,23 @@ test17:
 test18:
 	@if {$1} == 5
 		@if {$2} == foo
-			@if {$3} == bar
+			@if {$3} == "bar bat"
 				echo is bar
+				echo thing1
 			@else
 				echo not bar
+				echo thing2
 			@fi
+		@elif {$2} == baz
+			echo is baz
+			echo thing3
 		@else
 			echo not foo
+			echo thing4
 		@fi
 	@else
 		echo arg is not 5
+		echo thing5
 	@fi
 
 @options(
@@ -235,3 +242,12 @@ test21:
 	if (a > 1) {
 		console.log('yes')
 	}
+
+test22:
+	@if $(uname -s | tr "[:upper:]" "[:lower:]") == darwin
+		echo using MacOS
+	@elif $(uname -s | tr "[:upper:]" "[:lower:]") == linux
+		echo using Linux
+	@else
+        echo using something else
+    @fi

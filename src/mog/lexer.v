@@ -2,6 +2,7 @@ module mog
 
 const comment = '#'
 const decorator = '@'
+const keyword_delimeter = '@'
 const mog_import = 'import'
 const file_level_options = 'options'
 const task_delimeter = ':'
@@ -22,6 +23,7 @@ enum TokenType {
 	keyword
 	task_name
 	task_body
+	task_conditional
 	indent
 	end_block
 	decorator
@@ -229,6 +231,10 @@ fn (mut l Lexer) eat_task_body() !Token {
 		return l.eat_indent()
 	}
 	l.add_to_word('\n', '')
+	// if l.word.starts_with(keyword_delimeter) {
+	// 	print('${l.pos}', '${l.line}', l.current_char, l.word)
+	// 	return l.make_token(.task_conditional, l.reset_word())
+	// }
 	return l.make_token(.task_body, l.reset_word())
 }
 

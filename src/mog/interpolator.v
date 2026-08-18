@@ -1,7 +1,5 @@
 module mog
 
-import os
-
 const open_replacement = '{'
 const close_replacement = '}'
 const open_eval = '['
@@ -59,6 +57,7 @@ fn interpolator_debug(on bool, i Interpolator, s ...string) {
 }
 
 fn replace_mog_arg(replacement string, args []string) string {
+	print('REPLACEMENT ${replacement}')
 	for index, arg in args {
 		if replacement == '$${index + 1}' {
 			return arg
@@ -507,168 +506,6 @@ fn (mut i Interpolator) eat_control_flow() string {
 	return lines
 }
 
-interface Operation {
-	block string
-	evaluate() bool
-}
-
-enum UnaryOperator {
-	file_exists
-	dir_exists
-	empty
-	not_empty
-}
-
-struct UnaryOperation {
-	operator UnaryOperator
-	value    string
-	block    string
-}
-
-fn (u UnaryOperation) evaluate() bool {
-	match u.operator {
-		.file_exists {
-			return os.is_file(u.value)
-		}
-		.dir_exists {
-			return os.is_dir(u.value)
-		}
-		.empty {
-			if os.is_file(u.value) {
-				return os.system('test -s ${u.value}') != 0
-			} else if os.is_dir(u.value) {
-				return os.is_dir_empty(u.value)
-			} else {
-				eprint("Syntax error. Path not recognised: '${u.value}'\n")
-				exit(2)
-			}
-		}
-		.not_empty {
-			if os.is_file(u.value) {
-				return os.system('test -s ${u.value}') == 0
-			} else if os.is_dir(u.value) {
-				return !os.is_dir_empty(u.value)
-			} else {
-				eprint("Syntax error. Path not recognised: '${u.value}'\n")
-				exit(2)
-			}
-		}
-	}
-}
-
-enum LogicalOperator {
-	and
-	or
-	not
-}
-
-struct LogicalOperation {
-	left     bool
-	right    bool
-	operator LogicalOperator = .and
-	block    string
-}
-
-fn (l LogicalOperation) evaluate() bool {
-	match l.operator {
-		.and {
-			return l.left && l.right
-		}
-		.or {
-			return l.left || l.right
-		}
-		.not {
-			return !l.left
-		}
-	}
-}
-
-enum BinaryOperator {
-	eq
-	neq
-	lt
-	lte
-	gt
-	gte
-	in
-}
-
-struct BinaryOperation {
-	left     string
-	right    string
-	operator BinaryOperator = .eq
-	block    string
-}
-
-fn (b BinaryOperation) evaluate() bool {
-	match b.operator {
-		.eq {
-			if b.left.is_int() && b.right.is_int() {
-				return b.left.int() == b.right.int()
-			}
-			return remove_surrounding_quotes(b.left) == remove_surrounding_quotes(b.right)
-		}
-		.neq {
-			if b.left.is_int() && b.right.is_int() {
-				return b.left.int() != b.right.int()
-			}
-			return remove_surrounding_quotes(b.left) != remove_surrounding_quotes(b.right)
-		}
-		.lt {
-			if b.left.is_int() && b.right.is_int() {
-				return b.left.int() < b.right.int()
-			} else if b.left.is_int() && !b.right.is_int() {
-				eprint("Syntax error. Type mismatch '${b.left}' and '${b.right}'\n")
-				exit(2)
-			} else if !b.left.is_int() && b.right.is_int() {
-				eprint("Syntax error. Type mismatch '${b.left}' and '${b.right}'\n")
-				exit(2)
-			}
-			return remove_surrounding_quotes(b.left) < remove_surrounding_quotes(b.right)
-		}
-		.lte {
-			if b.left.is_int() && b.right.is_int() {
-				return b.left.int() <= b.right.int()
-			} else if b.left.is_int() && !b.right.is_int() {
-				eprint("Syntax error. Type mismatch '${b.left}' and '${b.right}'\n")
-				exit(2)
-			} else if !b.left.is_int() && b.right.is_int() {
-				eprint("Syntax error. Type mismatch '${b.left}' and '${b.right}'\n")
-				exit(2)
-			}
-			return remove_surrounding_quotes(b.left) <= remove_surrounding_quotes(b.right)
-		}
-		.gt {
-			if b.left.is_int() && b.right.is_int() {
-				return b.left.int() > b.right.int()
-			} else if b.left.is_int() && !b.right.is_int() {
-				eprint("Syntax error. Type mismatch '${b.left}' and '${b.right}'\n")
-				exit(2)
-			} else if !b.left.is_int() && b.right.is_int() {
-				eprint("Syntax error. Type mismatch '${b.left}' and '${b.right}'\n")
-				exit(2)
-			}
-			return remove_surrounding_quotes(b.left) > remove_surrounding_quotes(b.right)
-		}
-		.gte {
-			if b.left.is_int() && b.right.is_int() {
-				return b.left.int() >= b.right.int()
-			} else if b.left.is_int() && !b.right.is_int() {
-				eprint("Syntax error. Type mismatch '${b.left}' and '${b.right}'\n")
-				exit(2)
-			} else if !b.left.is_int() && b.right.is_int() {
-				eprint("Syntax error. Type mismatch '${b.left}' and '${b.right}'\n")
-				exit(2)
-			}
-			return remove_surrounding_quotes(b.left) >= remove_surrounding_quotes(b.right)
-		}
-		.in {
-			return remove_surrounding_quotes(b.left) in b.right.replace_once('[', '').reverse().replace_once(']',
-				'').reverse().split(',').map(it.trim_space()).map(remove_surrounding_quotes(it)).map(it.trim_space())
-		}
-	}
-}
-
 fn (mut i Interpolator) eat_if_condition() Operation {
 	i.skip_whitespace()
 	mut a := i.eat_and_replace_till('=', ' ').trim_space()
@@ -691,18 +528,13 @@ fn (mut i Interpolator) eat_bin_op(a string) BinaryOperation {
 	if b.starts_with('$') {
 		b = i.get_shell().execute(b)
 	}
-	interpolator_debug(false, i, "B '${b}'", '524')
-	// next_word := i.peek_till('a', 'o')
-	// interpolator_debug(false, i, "next_word '${next_word}'", '526')
 	if i.current_char != '\n' {
-		interpolator_debug(false, i, a, b, '${op}', '525')
 		eprint('Syntax error. Expected newline\n')
 		exit(2)
 	}
 	if i.current_char == '\n' {
 		i.next_char()
 	}
-	interpolator_debug(false, i, '111')
 	return BinaryOperation{a, b, op, i.eat_and_replace_till(elif_statement, else_statement,
 		close_if_statement)}
 }
@@ -744,7 +576,6 @@ fn (mut i Interpolator) eat_un_op(op_str string) UnaryOperation {
 	if i.current_char == '\n' {
 		i.next_char()
 	}
-	interpolator_debug(false, i, '112')
 	return UnaryOperation{op, b, i.eat_and_replace_till(elif_statement, else_statement,
 		close_if_statement)}
 }
@@ -775,45 +606,42 @@ fn (mut i Interpolator) eat_fi() {
 }
 
 fn (mut i Interpolator) eat_if_blocks() string {
-	interpolator_debug(false, i, '211')
-	if_comparison := i.eat_if_condition()
-	interpolator_debug(false, i, '${if_comparison}', '212')
-
-	mut elif_comparisons := []Operation{}
-	mut else_block := ''
-	interpolator_debug(false, i, '645')
-	mut else_keyword := i.eat_till(' ', '\n').trim_space()
-	interpolator_debug(false, i, else_keyword, '644')
-
-	i.next_char()
-	for else_keyword == elif_statement {
-		elif_comparisons << i.eat_if_condition()
-		interpolator_debug(false, i, 'eof=${i.eof}', '${i.line[i.pos..]}', '646')
-		else_keyword = i.eat_till(' ', '\n').trim_space()
-		interpolator_debug(false, i, '${elif_comparisons.last()}', '${else_keyword}', '647')
+	mut word := ''
+	mut result := '@if '
+	for word != close_if_statement {
+		if i.current_char == '' || i.eof {
+			eprint('if statement not closed properly\n')
+			exit(2)
+		}
+		if word == if_statement {
+			result += i.eat_if_blocks()
+			word = ''
+		}
+		word += i.current_char
+		if i.current_char in [' ', '\n'] {
+			result += word
+			word = ''
+		}
+		i.next_char()
 	}
-
-	if else_keyword == else_statement {
-		else_block = i.eat_and_replace_till(close_if_statement)
-		interpolator_debug(false, i, else_keyword, else_block, '642')
-		i.eat_fi()
-	} else if else_keyword != close_if_statement {
-		interpolator_debug(false, i, else_keyword, else_block, '643')
-		else_block = '${else_keyword} '
-		i.eat_fi()
-	}
-
-	if if_comparison.evaluate() {
-		return if_comparison.block
-	}
-
-	for comp in elif_comparisons {
-		if comp.evaluate() {
-			return comp.block
+	result += '@fi'
+	mut blocks := map[string]string{}
+	parts := split_any(result, '@if', '@elif', '@else', '@fi')
+	for part in parts {
+		if part.len > 0 {
+			condition, block := part.split_once('\n') or { 'nope', 'sir' }
+			blocks[condition.trim_space()] = block
 		}
 	}
-
-	return else_block
+	print('BLOCKS ${blocks}')
+	cond := Conditional{
+		blocks: blocks
+		task_name: i.task_name
+		mog: i.mog
+	}
+	res := cond.evaluate()
+	print('RES ${res}')
+	return result
 }
 
 fn (mut i Interpolator) skip_whitespace() {

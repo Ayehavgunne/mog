@@ -1,6 +1,7 @@
 module mog
 
 import os
+import regex
 
 pub const config_path = os.expand_tilde_to_home('~/.config/mog')
 pub const config_file_path = '${config_path}/config'
@@ -19,6 +20,15 @@ pub fn debug(o DebugOptions) {
 	} else {
 		println("DEBUG: '${o.s}'")
 	}
+}
+
+pub fn print(s ...string) {
+	println(s.map(it.replace('\n', '\\n').replace('    ', '')).join(' | '))
+}
+
+fn split_any(s string, words ...string) []string {
+	mut reg_obj := regex.regex_opt("(${words.join(')|(')})") or { exit(1) }
+	return reg_obj.split(s)
 }
 
 pub struct Task {
