@@ -235,3 +235,17 @@ test21:
 	if (a > 1) {
 		console.log('yes')
 	}
+
+test22:
+	@if {$1} == fix
+		echo fix
+	@else
+		echo not fix
+	@fi
+
+test100: # make sure this is the last test in the file
+	@if {$1} == "check"
+		echo yes arg is check
+	@else
+		echo arg is not check
+	@fi
